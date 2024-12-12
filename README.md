@@ -16,8 +16,28 @@ src/
 ├── config
 ├── main.ts
 └── modules
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
+
+# 开发流程
+> 本地开发时使用 main.ts 作为入口，连接开发环境的 AWS 资源
+> Lambda 部署时使用 lambda.ts 作为入口，使用对应环境的 AWS 资源
+> 环境变量会正确注入到 Lambda 中
+> 开发环境和生产环境完全隔离
+## 开发环境
+```shell
+# 先部署开发环境的 AWS 资源
+pnpm cdk deploy Mmc-Backend-dev
+
+# 本地运行开发服务器（使用 main.ts 作为入口）
+pnpm start:dev
+```
+
+## 线上环境
+```shell
+# 部署生产环境的 AWS 资源
+pnpm cdk deploy Mmc-Backend-prod
+```
+
+
     
 
 <a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>

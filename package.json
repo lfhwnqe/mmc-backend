@@ -7,6 +7,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:dev": "NODE_ENV=dev nest build",
+    "build:prod": "NODE_ENV=prod nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -17,12 +19,19 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "cdk:deploy": "cd infrastructure && cdk deploy",
+    "cdk:destroy": "cd infrastructure && cdk destroy",
+    "sam:build": "rm -rf dist && pnpm build && sam build --use-container",
+    "sam:local": "pnpm sam:build && sam local invoke ApiFunction -e events/register.json",
+    "sam:api": "pnpm sam:build && sam local start-api --warm-containers EAGER",
+    "sam:health": "pnpm sam:build && sam local invoke ApiFunction -e events/health.json"
   },
   "dependencies": {
     "@aws-cdk/aws-apigateway": "^1.204.0",
     "@aws-cdk/aws-lambda": "^1.204.0",
     "@aws-cdk/core": "^1.204.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.710.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.3.0",
     "@nestjs/core": "^10.0.0",
@@ -44,6 +53,8 @@
     "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "aws-cdk-lib": "^2.172.0",
+    "constructs": "^10.4.2",
     "eslint": "^8.0.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
