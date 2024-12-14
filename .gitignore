@@ -1,8 +1,9 @@
 # compiled output
 /dist
+*/node_modules
 /node_modules
 /build
-
+.aws-sam
 # Logs
 logs
 *.log
@@ -11,7 +12,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-
+*/cdk.out
 # OS
 .DS_Store
 

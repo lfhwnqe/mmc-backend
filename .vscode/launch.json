@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug NestJS",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["start:debug"],
+      "console": "integratedTerminal",
+      "restart": true,
+      "envFile": "${workspaceFolder}/.env.development"
+    }
+  ]
+} 

@@ -1,0 +1,25 @@
+{
+  "name": "infrastructure",
+  "version": "0.1.0",
+  "bin": {
+    "infrastructure": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "cdk:deploy:dev": "CDK_DEFAULT_REGION=us-east-2 cdk deploy Mmc-Backend-Dev",
+    "cdk:deploy:prod": "CDK_DEFAULT_REGION=us-east-2 cdk deploy Mmc-Backend-Prod"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.19",
+    "aws-cdk": "2.127.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.3.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.127.0",
+    "constructs": "^10.0.0",
+    "source-map-support": "^0.5.21"
+  }
+}
