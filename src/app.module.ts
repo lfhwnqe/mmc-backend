@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthMiddleware } from './modules/auth/middleware/auth.middleware';
+import { AudioSceneModule } from './modules/audio-scene/audio-scene.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AuthMiddleware } from './modules/auth/middleware/auth.middleware';
     }),
     AuthModule,
     HealthModule,
+    AudioSceneModule,
   ],
 })
 export class AppModule implements NestModule {

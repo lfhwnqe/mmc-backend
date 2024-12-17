@@ -5,6 +5,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 interface AuthStackProps extends cdk.StackProps {
   stage: string;  // 环境标识：dev, test, prod
@@ -132,6 +133,22 @@ export class AuthStack extends cdk.Stack {
     const proxy = api.root.addProxy({
       defaultIntegration: integration,
       anyMethod: true,  // 允许所有 HTTP 方法
+    });
+
+    // 创建 DynamoDB 表
+    const audioSceneTable = new dynamodb.Table(this, 'AudioSceneTable', {
+      tableName: `audio-scene-table-${stageName}`,
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // 开发环境可以使用 DESTROY，生产环境建议使用 RETAIN
+    });
+
+    // 添加 GSI (Global Secondary Index) 用于按场景名称查询
+    audioSceneTable.addGlobalSecondaryIndex({
+      indexName: 'sceneNameIndex',
+      partitionKey: { name: 'sceneName', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
     });
 
     // 输出重要信息
