@@ -20,6 +20,7 @@ specifiers:
   '@typescript-eslint/parser': ^8.0.0
   '@vendia/serverless-express': ^4.12.6
   aws-cdk-lib: ^2.172.0
+  aws-jwt-verify: ^4.0.1
   aws-lambda: ^1.0.7
   class-transformer: ^0.5.1
   class-validator: ^0.14.1
@@ -48,16 +49,18 @@ dependencies:
   '@nestjs/common': 10.4.15_bnnxhceqlvpgrjxe5cy4yeabo4
   '@nestjs/config': 3.3.0_4ts62un553jxr7h6yhonkwt3ou
   '@nestjs/core': 10.4.15_gy5xs3lqsn26fppbmw6uez4zrm
+  '@nestjs/platform-express': 10.4.15_5u4hn6whjn5aawl2edmluzh4i4
   '@vendia/serverless-express': 4.12.6
+  aws-jwt-verify: 4.0.1
   aws-lambda: 1.0.7
   class-transformer: 0.5.1
   class-validator: 0.14.1
+  express: 4.21.2
   reflect-metadata: 0.2.2
   rxjs: 7.8.1
 
 devDependencies:
   '@nestjs/cli': 10.4.9
-  '@nestjs/platform-express': 10.4.15_5u4hn6whjn5aawl2edmluzh4i4
   '@nestjs/schematics': 10.2.3_typescript@5.7.2
   '@nestjs/testing': 10.4.15_ulskiam2rhl5zwwkbzxlbea4si
   '@types/express': 5.0.0
@@ -71,7 +74,6 @@ devDependencies:
   eslint: 8.57.1
   eslint-config-prettier: 9.1.0_eslint@8.57.1
   eslint-plugin-prettier: 5.2.1_fk7o3c5pt3h7eopazq5wm6qiku
-  express: 4.21.2
   jest: 29.7.0_eutb7zapeqkutfbbne5jnjivte
   prettier: 3.4.2
   source-map-support: 0.5.21
@@ -3196,6 +3198,11 @@ packages:
       - table
       - yaml
       - mime-types
+
+  /aws-jwt-verify/4.0.1:
+    resolution: {integrity: sha512-kzvi71eD3w/mCpYRUY7cz6DX4bfYihGdI2yV3FYQ2JuZZenqAqDPz0gWj0ew6vlAtdEVBNb7p+Dm2TAIxpVYMA==}
+    engines: {node: '>=14.0.0'}
+    dev: false
 
   /aws-lambda/1.0.7:
     resolution: {integrity: sha512-9GNFMRrEMG5y3Jvv+V4azWvc+qNWdWLTjDdhf/zgMlz8haaaLWv0xeAIWxz9PuWUBawsVxy0zZotjCdR3Xq+2w==}

@@ -5,6 +5,8 @@ import { Context, Handler } from 'aws-lambda';
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { TransformInterceptor } from './interceptors/transform.interceptor';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 let cachedServer: Handler;
 
@@ -18,6 +20,8 @@ async function bootstrap(): Promise<Handler> {
 
     app.enableCors();
     app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalInterceptors(new TransformInterceptor());
+    app.useGlobalFilters(new HttpExceptionFilter());
     
     await app.init();
     cachedServer = serverlessExpress({ 
