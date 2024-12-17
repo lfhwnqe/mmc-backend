@@ -25,7 +25,7 @@ src/
 ## 开发环境
 ```shell
 # 先部署开发环境的 AWS 资源
-pnpm cdk deploy Mmc-Backend-dev
+pnpm run deploy:dev
 
 # 本地运行开发服务器（使用 main.ts 作为入口）
 pnpm start:dev
@@ -34,7 +34,7 @@ pnpm start:dev
 ## 线上环境
 ```shell
 # 部署生产环境的 AWS 资源
-pnpm cdk deploy Mmc-Backend-prod
+pnpm run deploy:prod
 ```
 
 
