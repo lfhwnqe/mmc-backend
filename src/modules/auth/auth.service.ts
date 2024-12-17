@@ -9,6 +9,12 @@ export class AuthService {
   private readonly clientId: string;
 
   constructor(private configService: ConfigService) {
+    console.log('当前环境:', process.env.NODE_ENV);
+    console.log('AWS凭证信息:', {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID ? '已设置' : '未设置',
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ? '已设置' : '未设置',
+    });
+    
     this.cognitoClient = new CognitoIdentityProviderClient({
       region: this.configService.get('AWS_REGION'),
     });
@@ -38,6 +44,7 @@ export class AuthService {
         data: response,
       };
     } catch (error) {
+      console.log('register error', error);
       throw error;
     }
   }

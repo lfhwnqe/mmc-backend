@@ -4,12 +4,13 @@ import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthMiddleware } from './modules/auth/middleware/auth.middleware';
 import { AudioSceneModule } from './modules/audio-scene/audio-scene.module';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      load: [configuration],
+      envFilePath: `./.env.${process.env.NODE_ENV || 'dev'}`,
     }),
     AuthModule,
     HealthModule,

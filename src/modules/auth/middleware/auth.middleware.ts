@@ -17,13 +17,13 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   async use(req: Request, res: Response, next: NextFunction) {
-    console.log('AuthMiddleware', req.originalUrl);
-    console.log('whiteList', whiteList);
     // 检查是否在白名单中
     if (whiteList.includes(req.originalUrl)) {
       return next();
     }
-
+    
+    // console.log('AuthMiddleware', req.originalUrl);
+    // console.log('whiteList', whiteList);
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       throw new UnauthorizedException('No token provided');
