@@ -21,23 +21,28 @@ export class AuthMiddleware implements NestMiddleware {
     if (whiteList.includes(req.originalUrl)) {
       return next();
     }
-    
-    // console.log('AuthMiddleware', req.originalUrl);
-    // console.log('whiteList', whiteList);
+
+    // 1. 先尝试从 cookie 中获取 token
+    const tokenFromCookie = req.cookies?.accessToken;
+
+    // 2. 如果 cookie 中没有，再尝试从 Authorization header 中获取
     const authHeader = req.headers.authorization;
-    console.log('authHeader', authHeader);
-    console.log('req.headers', req.headers);
-    if (!authHeader) {
+    const tokenFromHeader = authHeader?.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+
+    // 使用 cookie 中的 token 或 header 中的 token
+    const token = tokenFromCookie || tokenFromHeader;
+
+    if (!token) {
       throw new UnauthorizedException('No token provided');
     }
 
-    const token = authHeader.replace('Bearer ', '');
     try {
       const payload = await this.verifier.verify(token);
-      // 将用户信息添加到请求对象中
-      req['user'] = payload;
       next();
     } catch (err) {
+      console.error('Token verification failed:', err);
       throw new UnauthorizedException('Invalid token');
     }
   }

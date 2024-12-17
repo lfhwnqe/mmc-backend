@@ -41,7 +41,7 @@ export class HealthController {
           USER_POOL_CLIENT_ID: process.env.USER_POOL_CLIENT_ID,
         }
       };
-      console.log('Deep health check info:', info);
+      // console.log('Deep health check info:', info);
       return info;
     } catch (error) {
       console.error('Deep health check error:', error);
