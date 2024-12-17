@@ -25,12 +25,13 @@ export class AuthMiddleware implements NestMiddleware {
     // console.log('AuthMiddleware', req.originalUrl);
     // console.log('whiteList', whiteList);
     const authHeader = req.headers.authorization;
+    console.log('authHeader', authHeader);
+    console.log('req.headers', req.headers);
     if (!authHeader) {
       throw new UnauthorizedException('No token provided');
     }
 
     const token = authHeader.replace('Bearer ', '');
-
     try {
       const payload = await this.verifier.verify(token);
       // 将用户信息添加到请求对象中
