@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -86,6 +86,23 @@ export class AuthService {
           accessToken: response.AuthenticationResult.AccessToken,
           refreshToken: response.AuthenticationResult.RefreshToken,
         },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async resendCode(email: string) {
+    const command = new ResendConfirmationCodeCommand({
+      ClientId: this.clientId,
+      Username: email,
+    });
+
+    try {
+      await this.cognitoClient.send(command);
+      return {
+        success: true,
+        message: '验证码已重新发送',
       };
     } catch (error) {
       throw error;
