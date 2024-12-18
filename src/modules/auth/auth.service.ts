@@ -1,12 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
+import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 @Injectable()
 export class AuthService {
   private cognitoClient: CognitoIdentityProviderClient;
   private readonly userPoolId: string;
   private readonly clientId: string;
+  private verifier: any;
 
   constructor(private configService: ConfigService) {
     console.log('当前环境:', process.env.NODE_ENV);
@@ -26,6 +28,12 @@ export class AuthService {
       region: this.configService.get('AWS_REGION'),
       userPoolId: this.userPoolId,
       clientId: this.clientId,
+    });
+
+    this.verifier = CognitoJwtVerifier.create({
+      userPoolId: this.userPoolId,
+      clientId: this.clientId,
+      tokenUse: "access",
     });
   }
 
@@ -114,5 +122,21 @@ export class AuthService {
       success: true,
       message: '退出登录成功',
     };
+  }
+
+  async getUserInfo(token: string) {
+    try {
+      const payload = await this.verifier.verify(token);
+      return {
+        success: true,
+        data: {
+          email: payload.email,
+          sub: payload.sub,
+          // 其他你想要返回的用户信息
+        }
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid token');
+    }
   }
 } 

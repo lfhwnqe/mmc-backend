@@ -1,6 +1,7 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, ConfirmSignUpDto, LoginDto } from './dto/auth.dto';
+import { Request } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -35,5 +36,10 @@ export class AuthController {
   @Post('logout')
   async logout() {
     return this.authService.logout();
+  }
+
+  @Get('user-info')
+  async getUserInfo(@Req() req: Request) {
+    return this.authService.getUserInfo(req['token']);
   }
 } 
