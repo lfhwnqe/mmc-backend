@@ -31,4 +31,9 @@ export class AuthController {
   async resendCode(@Body() body: { email: string }) {
     return this.authService.resendCode(body.email);
   }
+
+  @Post('logout')
+  async logout() {
+    return this.authService.logout();
+  }
 } 
