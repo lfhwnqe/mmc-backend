@@ -39,8 +39,8 @@ export class AudioSceneController {
   }
 
   @Delete(':id')
-  async deleteScene(@Param('id') id: string) {
-    console.log('deleteScene:',id)
-    return this.audioSceneService.deleteScene(id);
+  async deleteScene(@Req() req: any, @Param('id') id: string) {
+    const userId = req.user.sub;
+    return this.audioSceneService.deleteScene(userId, id);
   }
 } 

@@ -2,13 +2,16 @@ import { Injectable, ForbiddenException } from '@nestjs/common';
 import { DynamoDB } from 'aws-sdk';
 import { CreateAudioSceneDto, QueryAudioSceneDto, PaginatedResponseDto, AudioSceneDto } from './dto/audio-scene.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { AudioService } from '../audio/audio.service';
 
 @Injectable()
 export class AudioSceneService {
   private readonly dynamoDb: DynamoDB.DocumentClient;
   private readonly tableName: string;
 
-  constructor() {
+  constructor(
+    private readonly audioService: AudioService,
+  ) {
     this.dynamoDb = new DynamoDB.DocumentClient();
     const stage = process.env.NODE_ENV === 'dev' ? 'dev' : 'prod';
     this.tableName = `audio-scene-table-${stage}`;
@@ -182,21 +185,32 @@ export class AudioSceneService {
     return result.LastEvaluatedKey;
   }
 
-  async deleteScene(sceneId: string) {
+  async deleteScene(userId: string, sceneId: string) {
     try {
-      console.log('deleteScene:',sceneId)
-      // await this.dynamoDb.delete({
-      //   TableName: this.tableName,
-      //   Key: {
-      //     sceneId
-      //   }
-      // }).promise();
+      // 1. 先获取场景信息，以获取音频文件的 key
+      const scene = await this.findOne(userId, sceneId);
+      if (!scene.success) {
+        throw new Error('场景不存在');
+      }
+
+      // 2. 删除 S3 中的音频文件
+      await this.audioService.deleteFile(scene.data.audioUrl);
+
+      // 3. 删除场景记录
+      await this.dynamoDb.delete({
+        TableName: this.tableName,
+        Key: {
+          userId,
+          sceneId
+        }
+      }).promise();
       
       return {
         success: true,
         message: '删除成功'
       };
     } catch (error) {
+      console.error('Delete scene error:', error);
       throw new Error('删除场景失败');
     }
   }

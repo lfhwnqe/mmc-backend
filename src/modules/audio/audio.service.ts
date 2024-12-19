@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
@@ -61,5 +61,23 @@ export class AudioService {
         url: signedUrl,
       },
     };
+  }
+
+  async deleteFile(key: string) {
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    });
+
+    try {
+      await this.s3Client.send(command);
+      return {
+        success: true,
+        message: '文件删除成功'
+      };
+    } catch (error) {
+      console.error('Delete S3 file error:', error);
+      throw error;
+    }
   }
 } 
