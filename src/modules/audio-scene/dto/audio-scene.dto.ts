@@ -17,6 +17,7 @@ export class CreateAudioSceneDto {
 }
 
 export class AudioSceneDto {
+  sceneId: string;
   userId: string;
   content: string;
   audioUrl: string;

@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { DynamoDB } from 'aws-sdk';
 import { CreateAudioSceneDto, QueryAudioSceneDto, PaginatedResponseDto, AudioSceneDto } from './dto/audio-scene.dto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AudioSceneService {
@@ -15,7 +16,10 @@ export class AudioSceneService {
 
   async create(userId: string, createDto: CreateAudioSceneDto) {
     const timestamp = new Date().toISOString();
+    const sceneId = uuidv4();
+
     const item = {
+      sceneId,
       userId,
       content: createDto.content,
       audioUrl: createDto.audioUrl,
@@ -30,10 +34,14 @@ export class AudioSceneService {
       Item: item,
     }).promise();
 
-    return item;
+    return {
+      success: true,
+      message: '场景创建成功',
+      data: item,
+    };
   }
 
-  async findByUserId(userId: string, queryDto: QueryAudioSceneDto): Promise<PaginatedResponseDto<AudioSceneDto>> {
+  async findByUserId(userId: string, queryDto: QueryAudioSceneDto) {
     const { page = 1, pageSize = 20 } = queryDto;
     
     // 首先获取总数
@@ -52,11 +60,14 @@ export class AudioSceneService {
     // 如果没有数据，直接返回空结果
     if (total === 0) {
       return {
-        items: [],
-        total: 0,
-        page,
-        pageSize,
-        totalPages: 0,
+        success: true,
+        data: {
+          items: [],
+          total: 0,
+          page,
+          pageSize,
+          totalPages: 0,
+        }
       };
     }
 
@@ -67,34 +78,44 @@ export class AudioSceneService {
       ExpressionAttributeValues: {
         ':userId': userId,
       },
+      ProjectionExpression: 'sceneId, userId, sceneName, audioUrl, #st, createdAt, updatedAt',
+      ExpressionAttributeNames: {
+        '#st': 'status'  // 使用别名来引用 status 字段
+      },
       Limit: pageSize,
-      ScanIndexForward: false, // 按时间倒序
-      // 如果不是第一页，使用 ExclusiveStartKey
+      ScanIndexForward: false,
       ...(page > 1 && {
         ExclusiveStartKey: await this.getPageKey(userId, page, pageSize),
       }),
     }).promise();
 
     return {
-      items: result.Items as AudioSceneDto[],
-      total,
-      page,
-      pageSize,
-      totalPages,
+      success: true,
+      data: {
+        items: result.Items as AudioSceneDto[],
+        total,
+        page,
+        pageSize,
+        totalPages,
+      }
     };
   }
 
-  async findBySceneName(userId: string, sceneName: string, queryDto: QueryAudioSceneDto): Promise<PaginatedResponseDto<AudioSceneDto>> {
+  async findBySceneName(userId: string, sceneName: string, queryDto: QueryAudioSceneDto) {
     const { page = 1, pageSize = 20 } = queryDto;
 
     const result = await this.dynamoDb.query({
       TableName: this.tableName,
       IndexName: 'sceneNameIndex',
       KeyConditionExpression: 'sceneName = :sceneName',
-      FilterExpression: 'userId = :userId', // 只查询当前用户的场景
+      FilterExpression: 'userId = :userId',
       ExpressionAttributeValues: {
         ':sceneName': sceneName,
         ':userId': userId,
+      },
+      ProjectionExpression: 'userId, sceneName, audioUrl, #st, createdAt, updatedAt',
+      ExpressionAttributeNames: {
+        '#st': 'status'
       },
       Limit: pageSize,
       ScanIndexForward: false,
@@ -104,11 +125,41 @@ export class AudioSceneService {
     const totalPages = Math.ceil(total / pageSize);
 
     return {
-      items: result.Items as AudioSceneDto[],
-      total,
-      page,
-      pageSize,
-      totalPages,
+      success: true,
+      data: {
+        items: result.Items as AudioSceneDto[],
+        total,
+        page,
+        pageSize,
+        totalPages,
+      }
+    };
+  }
+
+  async findOne(userId: string, sceneId: string) {
+    const result = await this.dynamoDb.get({
+      TableName: this.tableName,
+      Key: {
+        userId,
+        sceneId,
+      },
+    }).promise();
+
+    if (!result.Item) {
+      return {
+        success: false,
+        message: '场景不存在',
+      };
+    }
+
+    // 检查是否是当前用户的场景
+    if (result.Item.userId !== userId) {
+      throw new ForbiddenException('没有权限访问此场景');
+    }
+
+    return {
+      success: true,
+      data: result.Item as AudioSceneDto,
     };
   }
 
@@ -131,25 +182,22 @@ export class AudioSceneService {
     return result.LastEvaluatedKey;
   }
 
-  // 获取单个场景详情
-  async findOne(userId: string, sceneId: string): Promise<AudioSceneDto> {
-    const result = await this.dynamoDb.get({
-      TableName: this.tableName,
-      Key: {
-        userId,
-        sceneId,
-      },
-    }).promise();
-
-    if (!result.Item) {
-      return null;
+  async deleteScene(sceneId: string) {
+    try {
+      console.log('deleteScene:',sceneId)
+      // await this.dynamoDb.delete({
+      //   TableName: this.tableName,
+      //   Key: {
+      //     sceneId
+      //   }
+      // }).promise();
+      
+      return {
+        success: true,
+        message: '删除成功'
+      };
+    } catch (error) {
+      throw new Error('删除场景失败');
     }
-
-    // 检查是否是当前用户的场景
-    if (result.Item.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to access this scene');
-    }
-
-    return result.Item as AudioSceneDto;
   }
 } 

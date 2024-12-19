@@ -23,13 +23,17 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "deploy:dev": "NODE_ENV=dev pnpm build:lambda && cd infrastructure && pnpm cdk:deploy:dev",
     "deploy:prod": "NODE_ENV=prod pnpm build:lambda && cd infrastructure && pnpm cdk:deploy:prod",
-    "cdk:destroy": "cd infrastructure && cdk destroy"
+    "cdk:destroy": "cd infrastructure && cdk destroy",
+    "destroy:dev": "cd infrastructure && pnpm run destroy:dev",
+    "destroy:prod": "cd infrastructure && pnpm run destroy:prod"
   },
   "dependencies": {
     "@aws-cdk/aws-apigateway": "^1.204.0",
     "@aws-cdk/aws-lambda": "^1.204.0",
     "@aws-cdk/core": "^1.204.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.710.0",
+    "@aws-sdk/client-s3": "^3.716.0",
+    "@aws-sdk/s3-request-presigner": "^3.716.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.3.0",
     "@nestjs/core": "^10.0.0",
@@ -43,7 +47,8 @@
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

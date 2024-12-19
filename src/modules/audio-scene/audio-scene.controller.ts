@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Req, Query, Param, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, Query, Param, ForbiddenException, Delete } from '@nestjs/common';
 import { AudioSceneService } from './audio-scene.service';
 import { CreateAudioSceneDto, QueryAudioSceneDto } from './dto/audio-scene.dto';
 
@@ -36,5 +36,11 @@ export class AudioSceneController {
       throw new ForbiddenException('Scene not found or access denied');
     }
     return scene;
+  }
+
+  @Delete(':id')
+  async deleteScene(@Param('id') id: string) {
+    console.log('deleteScene:',id)
+    return this.audioSceneService.deleteScene(id);
   }
 } 

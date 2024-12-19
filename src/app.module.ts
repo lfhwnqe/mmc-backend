@@ -4,6 +4,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthMiddleware } from './modules/auth/middleware/auth.middleware';
 import { AudioSceneModule } from './modules/audio-scene/audio-scene.module';
+import { AudioModule } from './modules/audio/audio.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -15,12 +16,20 @@ import configuration from './config/configuration';
     AuthModule,
     HealthModule,
     AudioSceneModule,
+    AudioModule
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
-      .forRoutes('*');  // 应用到所有路由
+      .exclude(
+        '/auth/login',
+        '/auth/register',
+        '/auth/confirm',
+        '/auth/resend-code',
+        '/health/deep'
+      )
+      .forRoutes('*');
   }
 }

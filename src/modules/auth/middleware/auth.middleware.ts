@@ -40,8 +40,9 @@ export class AuthMiddleware implements NestMiddleware {
 
     try {
       const payload = await this.verifier.verify(token);
-      // 将 token 保存到请求对象中，供后续使用
+      // 将 token 和用户信息保存到请求对象中
       req['token'] = token;
+      req['user'] = payload;
       next();
     } catch (err) {
       console.error('Token verification failed:', err);
