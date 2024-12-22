@@ -77,6 +77,39 @@ export class AuthStack extends cdk.Stack {
       }),
     );
 
+    // 创建 S3 桶
+    const audioBucket = new s3.Bucket(this, 'AudioBucket', {
+      bucketName: `${id}-${stageName}-audio-bucket`.toLowerCase(),
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+          ],
+          allowedOrigins: [
+            'http://localhost:3000',
+            'https://mn.maomaocong.site',
+            'http://localhost:3001',
+          ],
+          allowedHeaders: ['*'],
+          exposedHeaders: [
+            'ETag',
+            'x-amz-server-side-encryption',
+            'x-amz-request-id',
+            'x-amz-id-2',
+          ],
+        },
+      ],
+      removalPolicy: props.stage === 'production' 
+        ? cdk.RemovalPolicy.RETAIN 
+        : cdk.RemovalPolicy.DESTROY,
+    });
+
     // 创建 Lambda 函数
     const handler = new lambda.Function(this, 'AuthHandler', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -88,6 +121,7 @@ export class AuthStack extends cdk.Stack {
         NODE_ENV: props.stage,
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
+        AUDIO_BUCKET_NAME: audioBucket.bucketName,
       },
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
@@ -142,47 +176,16 @@ export class AuthStack extends cdk.Stack {
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sceneId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: props.stage === 'production' 
+        ? cdk.RemovalPolicy.RETAIN 
+        : cdk.RemovalPolicy.DESTROY,
     });
 
-    // 添加新的 GSI，使用不同的名称
+    // 只添加新的 GSI
     audioSceneTable.addGlobalSecondaryIndex({
-      indexName: 'sceneNameIndex-v2',  // 修改索引名称
+      indexName: 'sceneNameIndex-v2',
       partitionKey: { name: 'sceneName', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sceneId', type: dynamodb.AttributeType.STRING },
-    });
-
-    // 创建 S3 桶
-    const audioBucket = new s3.Bucket(this, 'AudioBucket', {
-      bucketName: `${id}-${stageName}-audio-bucket`.toLowerCase(),
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, // 阻止所有公开访问
-      encryption: s3.BucketEncryption.S3_MANAGED, // 使用 S3 管理的加密
-      enforceSSL: true, // 强制使用 SSL
-      versioned: true, // 启用版本控制
-      cors: [
-        {
-          allowedMethods: [
-            s3.HttpMethods.GET,
-            s3.HttpMethods.PUT,
-            s3.HttpMethods.POST,
-          ],
-          allowedOrigins: [
-            'http://localhost:3000',           // 本地开发
-            'https://mn.maomaocong.site',      // 生产环境
-            'http://localhost:3001',           // 本地后端
-          ],
-          allowedHeaders: ['*'],
-          exposedHeaders: [
-            'ETag',
-            'x-amz-server-side-encryption',
-            'x-amz-request-id',
-            'x-amz-id-2',
-          ],
-        },
-      ],
-      removalPolicy: props.stage === 'production' 
-        ? cdk.RemovalPolicy.RETAIN  // 生产环境保留
-        : cdk.RemovalPolicy.DESTROY, // 开发环境可以删除
     });
 
     // 创建 IAM 策略允许认证用户访问 S3
