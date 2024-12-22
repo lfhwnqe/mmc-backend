@@ -57,6 +57,17 @@ export class AuthStack extends cdk.Stack {
       preventUserExistenceErrors: true,
     });
 
+    // 创建 DynamoDB 表
+    const audioSceneTable = new dynamodb.Table(this, 'AudioSceneTable', {
+      tableName: `audio-scene-table-${stageName}`,
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'sceneId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: props.stage === 'production' 
+        ? cdk.RemovalPolicy.RETAIN 
+        : cdk.RemovalPolicy.DESTROY,
+    });
+
     // 创建 Lambda 执行角色
     const lambdaRole = new iam.Role(this, 'LambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -72,9 +83,30 @@ export class AuthStack extends cdk.Stack {
           'cognito-idp:SignUp',
           'cognito-idp:InitiateAuth',
           'cognito-idp:ConfirmSignUp',
+          'cognito-idp:AdminInitiateAuth',
+          'cognito-idp:AdminGetUser',
+          'cognito-idp:GetUser',
         ],
         resources: [this.userPool.userPoolArn],
       }),
+    );
+
+    // 添加 DynamoDB 权限
+    lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'dynamodb:Query',
+          'dynamodb:GetItem',
+          'dynamodb:PutItem',
+          'dynamodb:UpdateItem',
+          'dynamodb:DeleteItem',
+        ],
+        resources: [
+          audioSceneTable.tableArn,
+          `${audioSceneTable.tableArn}/index/*`,
+        ],
+      })
     );
 
     // 创建 S3 桶
@@ -168,24 +200,6 @@ export class AuthStack extends cdk.Stack {
     const proxy = api.root.addProxy({
       defaultIntegration: integration,
       anyMethod: true,  // 允许所有 HTTP 方法
-    });
-
-    // 创建 DynamoDB 表
-    const audioSceneTable = new dynamodb.Table(this, 'AudioSceneTable', {
-      tableName: `audio-scene-table-${stageName}`,
-      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sceneId', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: props.stage === 'production' 
-        ? cdk.RemovalPolicy.RETAIN 
-        : cdk.RemovalPolicy.DESTROY,
-    });
-
-    // 只添加新的 GSI
-    audioSceneTable.addGlobalSecondaryIndex({
-      indexName: 'sceneNameIndex-v2',
-      partitionKey: { name: 'sceneName', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sceneId', type: dynamodb.AttributeType.STRING },
     });
 
     // 创建 IAM 策略允许认证用户访问 S3

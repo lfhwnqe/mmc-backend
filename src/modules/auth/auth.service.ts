@@ -130,10 +130,10 @@ export class AuthService {
       return {
         success: true,
         data: {
-          email: payload.email,
           sub: payload.sub,
-          // 其他你想要返回的用户信息
-        }
+          email: payload['cognito:username'] || payload.email || payload.sub,
+        },
+        timestamp: new Date().toISOString()
       };
     } catch (error) {
       throw new UnauthorizedException('Invalid token');

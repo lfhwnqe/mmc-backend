@@ -1,4 +1,8 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
@@ -17,21 +21,28 @@ export class AuthMiddleware implements NestMiddleware {
   }
 
   async use(req: Request, res: Response, next: NextFunction) {
-    // 检查是否在白名单中
     if (whiteList.includes(req.originalUrl)) {
       return next();
     }
 
-    // 1. 先尝试从 cookie 中获取 token
-    const tokenFromCookie = req.cookies?.accessToken;
+    console.log('req originalUrl:', req.originalUrl);
+    
+    // 从 Cookie 头中解析 token
+    const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>) || {};
 
-    // 2. 如果 cookie 中没有，再尝试从 Authorization header 中获取
+    const tokenFromCookie = cookies['accessToken'];
+    console.log('Token from cookie:', tokenFromCookie);
+
     const authHeader = req.headers.authorization;
     const tokenFromHeader = authHeader?.startsWith('Bearer ') 
       ? authHeader.substring(7) 
       : null;
+    console.log('Token from header:', tokenFromHeader);
 
-    // 使用 cookie 中的 token 或 header 中的 token
     const token = tokenFromCookie || tokenFromHeader;
 
     if (!token) {
@@ -40,7 +51,6 @@ export class AuthMiddleware implements NestMiddleware {
 
     try {
       const payload = await this.verifier.verify(token);
-      // 将 token 和用户信息保存到请求对象中
       req['token'] = token;
       req['user'] = payload;
       next();
@@ -49,4 +59,4 @@ export class AuthMiddleware implements NestMiddleware {
       throw new UnauthorizedException('Invalid token');
     }
   }
-} 
+}

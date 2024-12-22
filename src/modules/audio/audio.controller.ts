@@ -14,11 +14,13 @@ export class AudioController {
   ) {
     const { fileName, fileType } = body;
 
-    // 添加调试日志
-    console.log('Request user info:', req['user']);
-    console.log('User sub:', req['user']?.sub);
+    console.log('Upload URL request:', {
+      user: req['user'],
+      token: req['token'],
+      fileName,
+      fileType
+    });
 
-    // 验证文件类型
     if (!ALLOWED_AUDIO_TYPES.includes(fileType)) {
       throw new BadRequestException(
         `不支持的文件类型。支持的类型: ${ALLOWED_AUDIO_TYPES.join(', ')}`
@@ -26,6 +28,10 @@ export class AudioController {
     }
 
     if (!req['user']?.sub) {
+      console.error('Auth error:', {
+        user: req['user'],
+        headers: req.headers
+      });
       throw new UnauthorizedException('User ID not found');
     }
 
