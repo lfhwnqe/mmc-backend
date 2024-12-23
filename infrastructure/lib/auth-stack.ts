@@ -125,7 +125,8 @@ export class AuthStack extends cdk.Stack {
           ],
           allowedOrigins: [
             'http://localhost:3000',
-            'https://mn.maomaocong.site',
+            'https://en.maomaocong.site',
+            'https://*.maomaocong.site',
             'http://localhost:3001',
           ],
           allowedHeaders: ['*'],
