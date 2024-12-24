@@ -35,13 +35,11 @@ export class AuthMiddleware implements NestMiddleware {
     }, {} as Record<string, string>) || {};
 
     const tokenFromCookie = cookies['accessToken'];
-    console.log('Token from cookie:', tokenFromCookie);
 
     const authHeader = req.headers.authorization;
     const tokenFromHeader = authHeader?.startsWith('Bearer ') 
       ? authHeader.substring(7) 
       : null;
-    console.log('Token from header:', tokenFromHeader);
 
     const token = tokenFromCookie || tokenFromHeader;
 

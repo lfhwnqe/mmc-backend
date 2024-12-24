@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, ListUsersCommand, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
@@ -137,6 +137,141 @@ export class AuthService {
       };
     } catch (error) {
       throw new UnauthorizedException('Invalid token');
+    }
+  }
+
+  async addUserToGroup(email: string, groupName: string) {
+    try {
+      console.log('addUserToGroup', email, groupName);
+      const user = await this.getUserByEmail(email);
+      console.log('user', user);
+      await this.cognitoClient.send(
+        new AdminAddUserToGroupCommand({
+          UserPoolId: this.userPoolId,
+          Username: user.Username,
+          GroupName: groupName,
+        })
+      );
+
+      return {
+        success: true,
+        message: '添加用户到组成功',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '添加用户到组失败',
+        error: error.message,
+      };
+    }
+  }
+
+  async removeUserFromGroup(email: string, groupName: string) {
+    try {
+      const user = await this.getUserByEmail(email);
+      
+      await this.cognitoClient.send(
+        new AdminRemoveUserFromGroupCommand({
+          UserPoolId: this.userPoolId,
+          Username: user.Username,
+          GroupName: groupName,
+        })
+      );
+
+      return {
+        success: true,
+        message: '从组中移除用户成功',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '从组中移除用户失败',
+        error: error.message,
+      };
+    }
+  }
+
+  async getUserGroups(token: string) {
+    const userCommand = new GetUserCommand({
+      AccessToken: token,
+    });
+    const user = await this.cognitoClient.send(userCommand);
+
+    const groupsCommand = new AdminListGroupsForUserCommand({
+      UserPoolId: this.userPoolId,
+      Username: user.Username,
+    });
+    return this.cognitoClient.send(groupsCommand);
+  }
+
+  async isUserInGroup(token: string, groupName: string) {
+    try {
+      const groups = await this.getUserGroups(token);
+      const isAdmin = groups.Groups.some(group => group.GroupName === groupName);
+      
+      return {
+        success: true,
+        data: isAdmin,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '检查用户组失败',
+        error: error.message,
+      };
+    }
+  }
+
+  private async getUserByEmail(email: string) {
+    const command = new ListUsersCommand({
+      UserPoolId: this.userPoolId,
+      Filter: `email = "${email}"`,
+    });
+    const users = await this.cognitoClient.send(command);
+
+    if (!users.Users || users.Users.length === 0) {
+      throw new Error('User not found');
+    }
+
+    return users.Users[0];
+  }
+
+  async listUsers() {
+    try {
+      const command = new ListUsersCommand({
+        UserPoolId: this.userPoolId,
+      });
+      
+      const users = await this.cognitoClient.send(command);
+      
+      const usersWithGroups = await Promise.all(
+        users.Users.map(async (user) => {
+          const groups = await this.cognitoClient.send(
+            new AdminListGroupsForUserCommand({
+              UserPoolId: this.userPoolId,
+              Username: user.Username,
+            })
+          );
+          
+          return {
+            email: user.Attributes.find(attr => attr.Name === 'email')?.Value,
+            isAdmin: groups.Groups.some(group => group.GroupName === 'admin'),
+          };
+        })
+      );
+      
+      return {
+        success: true,
+        data: {
+          users: usersWithGroups,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '获取用户列表失败',
+        error: error.message,
+      };
     }
   }
 } 

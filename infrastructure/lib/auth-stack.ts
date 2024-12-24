@@ -238,6 +238,27 @@ export class AuthStack extends cdk.Stack {
       }),
     );
 
+    // 在 userPool 创建后添加
+    const adminGroup = new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'admin',
+      description: 'Administrator group with full access',
+    });
+
+    // 给 Lambda 添加管理用户组的权限
+    lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'cognito-idp:AdminAddUserToGroup',
+          'cognito-idp:AdminRemoveUserFromGroup',
+          'cognito-idp:AdminListGroupsForUser',
+          'cognito-idp:ListUsers',
+          'cognito-idp:ListGroups',
+        ],
+        resources: [this.userPool.userPoolArn],
+      }),
+    );
+
     // 输出重要信息
     new cdk.CfnOutput(this, 'UserPoolId', {
       value: this.userPool.userPoolId,

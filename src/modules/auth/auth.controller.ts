@@ -1,8 +1,8 @@
-import { Body, Controller, Post, Get, Req } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, ConfirmSignUpDto, LoginDto } from './dto/auth.dto';
 import { Request } from 'express';
-
+import { AdminGuard } from './guards/admin.guard';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -41,5 +41,34 @@ export class AuthController {
   @Get('user-info')
   async getUserInfo(@Req() req: Request) {
     return this.authService.getUserInfo(req['token']);
+  }
+
+  @Post('set-admin')
+  @UseGuards(AdminGuard)
+  async setUserAsAdmin(@Body() body: { email: string }) {
+    console.log('setUserAsAdmin', body);
+    return await this.authService.addUserToGroup(body.email, 'admin');
+  }
+
+  @Post('remove-admin')
+  @UseGuards(AdminGuard)
+  async removeUserAsAdmin(@Body() body: { email: string }) {
+    return await this.authService.removeUserFromGroup(body.email, 'admin');
+  }
+
+  @Get('user-groups')
+  async getUserGroups(@Req() req: Request) {
+    return await this.authService.getUserGroups(req['token']);
+  }
+
+  @Get('is-admin')
+  async isAdmin(@Req() req: Request) {
+    return await this.authService.isUserInGroup(req['token'], 'admin');
+  }
+
+  @Get('users')
+  @UseGuards(AdminGuard)
+  async getUsers() {
+    return await this.authService.listUsers();
   }
 } 
