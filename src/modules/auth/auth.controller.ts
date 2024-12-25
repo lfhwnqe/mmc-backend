@@ -83,4 +83,4 @@ export class AuthController {
   async getRegistrationSetting() {
     return await this.authService.isRegistrationEnabled();
   }
-} 
+}

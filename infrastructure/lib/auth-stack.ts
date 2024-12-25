@@ -9,7 +9,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
 interface AuthStackProps extends cdk.StackProps {
-  stage: string;  // 环境标识：dev, test, prod
+  stage: string; // 环境标识：dev, test, prod
 }
 
 export class AuthStack extends cdk.Stack {
@@ -37,6 +37,10 @@ export class AuthStack extends cdk.Stack {
           mutable: true,
         },
       },
+      userInvitation: {
+        emailSubject: '验证您的邮箱',
+        emailBody: '您好 {username}，您的验证码是 {####}',
+      },
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
@@ -63,16 +67,19 @@ export class AuthStack extends cdk.Stack {
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sceneId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: props.stage === 'production' 
-        ? cdk.RemovalPolicy.RETAIN 
-        : cdk.RemovalPolicy.DESTROY,
+      removalPolicy:
+        props.stage === 'production'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
     });
 
     // 创建 Lambda 执行角色
     const lambdaRole = new iam.Role(this, 'LambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AWSLambdaBasicExecutionRole',
+        ),
       ],
     });
 
@@ -86,6 +93,8 @@ export class AuthStack extends cdk.Stack {
           'cognito-idp:AdminInitiateAuth',
           'cognito-idp:AdminGetUser',
           'cognito-idp:GetUser',
+          'cognito-idp:UpdateUserPool',
+          'cognito-idp:DescribeUserPool',
         ],
         resources: [this.userPool.userPoolArn],
       }),
@@ -106,7 +115,7 @@ export class AuthStack extends cdk.Stack {
           audioSceneTable.tableArn,
           `${audioSceneTable.tableArn}/index/*`,
         ],
-      })
+      }),
     );
 
     // 创建 S3 桶
@@ -138,9 +147,10 @@ export class AuthStack extends cdk.Stack {
           ],
         },
       ],
-      removalPolicy: props.stage === 'production' 
-        ? cdk.RemovalPolicy.RETAIN 
-        : cdk.RemovalPolicy.DESTROY,
+      removalPolicy:
+        props.stage === 'production'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
     });
 
     // 创建 Lambda 函数
@@ -165,7 +175,9 @@ export class AuthStack extends cdk.Stack {
     const apiGatewayLoggingRole = new iam.Role(this, 'ApiGatewayLoggingRole', {
       assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
       managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AmazonAPIGatewayPushToCloudWatchLogs',
+        ),
       ],
     });
 
@@ -183,7 +195,7 @@ export class AuthStack extends cdk.Stack {
         accessLogDestination: new apigateway.LogGroupLogDestination(
           new cdk.aws_logs.LogGroup(this, 'ApiGatewayAccessLogs', {
             retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
-          })
+          }),
         ),
         accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
       },
@@ -200,7 +212,7 @@ export class AuthStack extends cdk.Stack {
     // 添加根路径代理
     const proxy = api.root.addProxy({
       defaultIntegration: integration,
-      anyMethod: true,  // 允许所有 HTTP 方法
+      anyMethod: true, // 允许所有 HTTP 方法
     });
 
     // 创建 IAM 策略允许认证用户访问 S3
@@ -209,32 +221,24 @@ export class AuthStack extends cdk.Stack {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: ['s3:GetObject', 's3:PutObject'],
-          resources: [
-            `${audioBucket.bucketArn}/*`,
-          ],
+          resources: [`${audioBucket.bucketArn}/*`],
           conditions: {
-            'StringEquals': {
-              'cognito-identity.amazonaws.com:aud': this.userPool.userPoolId
+            StringEquals: {
+              'cognito-identity.amazonaws.com:aud': this.userPool.userPoolId,
             },
             'ForAnyValue:StringLike': {
-              'cognito-identity.amazonaws.com:amr': 'authenticated'
-            }
-          }
-        })
-      ]
+              'cognito-identity.amazonaws.com:amr': 'authenticated',
+            },
+          },
+        }),
+      ],
     });
 
     // 为 Lambda 添加 S3 权限
     lambdaRole.addToPolicy(
       new iam.PolicyStatement({
-        actions: [
-          's3:PutObject',
-          's3:GetObject',
-          's3:DeleteObject',
-        ],
-        resources: [
-          `${audioBucket.bucketArn}/*`,
-        ],
+        actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+        resources: [`${audioBucket.bucketArn}/*`],
       }),
     );
 
@@ -281,4 +285,4 @@ export class AuthStack extends cdk.Stack {
       value: audioBucket.bucketArn,
     });
   }
-} 
+}

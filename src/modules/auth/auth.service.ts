@@ -1,7 +1,20 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, ListUsersCommand, GetUserCommand, UpdateUserPoolCommand, DescribeUserPoolCommand } from '@aws-sdk/client-cognito-identity-provider';
+import {
+  CognitoIdentityProviderClient,
+  SignUpCommand,
+  InitiateAuthCommand,
+  ConfirmSignUpCommand,
+  ResendConfirmationCodeCommand,
+  AdminAddUserToGroupCommand,
+  AdminRemoveUserFromGroupCommand,
+  AdminListGroupsForUserCommand,
+  ListUsersCommand,
+  GetUserCommand,
+  UpdateUserPoolCommand,
+  DescribeUserPoolCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
-import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
 
 @Injectable()
 export class AuthService {
@@ -16,11 +29,11 @@ export class AuthService {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID ? '已设置' : '未设置',
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ? '已设置' : '未设置',
     });
-    
+
     this.cognitoClient = new CognitoIdentityProviderClient({
       region: this.configService.get('AWS_REGION'),
     });
-    
+
     this.userPoolId = this.configService.get('USER_POOL_ID');
     this.clientId = this.configService.get('USER_POOL_CLIENT_ID');
 
@@ -33,7 +46,7 @@ export class AuthService {
     this.verifier = CognitoJwtVerifier.create({
       userPoolId: this.userPoolId,
       clientId: this.clientId,
-      tokenUse: "access",
+      tokenUse: 'access',
     });
   }
 
@@ -142,7 +155,7 @@ export class AuthService {
           sub: payload.sub,
           email: payload['cognito:username'] || payload.email || payload.sub,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     } catch (error) {
       throw new UnauthorizedException('Invalid token');
@@ -159,7 +172,7 @@ export class AuthService {
           UserPoolId: this.userPoolId,
           Username: user.Username,
           GroupName: groupName,
-        })
+        }),
       );
 
       return {
@@ -178,13 +191,13 @@ export class AuthService {
   async removeUserFromGroup(email: string, groupName: string) {
     try {
       const user = await this.getUserByEmail(email);
-      
+
       await this.cognitoClient.send(
         new AdminRemoveUserFromGroupCommand({
           UserPoolId: this.userPoolId,
           Username: user.Username,
           GroupName: groupName,
-        })
+        }),
       );
 
       return {
@@ -216,8 +229,10 @@ export class AuthService {
   async isUserInGroup(token: string, groupName: string) {
     try {
       const groups = await this.getUserGroups(token);
-      const isAdmin = groups.Groups.some(group => group.GroupName === groupName);
-      
+      const isAdmin = groups.Groups.some(
+        (group) => group.GroupName === groupName,
+      );
+
       return {
         success: true,
         data: isAdmin,
@@ -250,25 +265,25 @@ export class AuthService {
       const command = new ListUsersCommand({
         UserPoolId: this.userPoolId,
       });
-      
+
       const users = await this.cognitoClient.send(command);
-      
+
       const usersWithGroups = await Promise.all(
         users.Users.map(async (user) => {
           const groups = await this.cognitoClient.send(
             new AdminListGroupsForUserCommand({
               UserPoolId: this.userPoolId,
               Username: user.Username,
-            })
+            }),
           );
-          
+
           return {
-            email: user.Attributes.find(attr => attr.Name === 'email')?.Value,
-            isAdmin: groups.Groups.some(group => group.GroupName === 'admin'),
+            email: user.Attributes.find((attr) => attr.Name === 'email')?.Value,
+            isAdmin: groups.Groups.some((group) => group.GroupName === 'admin'),
           };
-        })
+        }),
       );
-      
+
       return {
         success: true,
         data: {
@@ -289,21 +304,21 @@ export class AuthService {
       const command = new UpdateUserPoolCommand({
         UserPoolId: this.userPoolId,
         AdminCreateUserConfig: {
-          AllowAdminCreateUserOnly: !enabled
-        }
+          AllowAdminCreateUserOnly: !enabled,
+        },
       });
 
       await this.cognitoClient.send(command);
       return {
         success: true,
         message: `${enabled ? '开启' : '关闭'}注册成功`,
-        data: { enabled }
+        data: { enabled },
       };
     } catch (error) {
       return {
         success: false,
         message: '更新注册设置失败',
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -315,19 +330,19 @@ export class AuthService {
       });
 
       const response = await this.cognitoClient.send(command);
-      console.log('isRegistrationEnabled response:', response);
       return {
         success: true,
         data: {
-          enabled: !response.UserPool.AdminCreateUserConfig?.AllowAdminCreateUserOnly
-        }
+          enabled:
+            !response.UserPool.AdminCreateUserConfig?.AllowAdminCreateUserOnly,
+        },
       };
     } catch (error) {
       return {
         success: false,
         message: '获取注册设置失败',
-        error: error.message
+        error: error.message,
       };
     }
   }
-} 
+}

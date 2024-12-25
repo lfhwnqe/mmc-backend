@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthService } from '../auth.service';
 
 @Injectable()
@@ -13,11 +18,15 @@ export class AdminGuard implements CanActivate {
       throw new UnauthorizedException('No token provided');
     }
 
-    const isAdmin = await this.authService.isUserInGroup(token, 'admin');
-    if (!isAdmin) {
+    const isAdminResponse = await this.authService.isUserInGroup(
+      token,
+      'admin',
+    );
+    console.log('isAdminResponse', isAdminResponse);
+    if (!isAdminResponse.success || !isAdminResponse.data) {
       throw new UnauthorizedException('Admin access required');
     }
 
     return true;
   }
-} 
+}
