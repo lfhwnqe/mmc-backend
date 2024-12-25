@@ -71,4 +71,16 @@ export class AuthController {
   async getUsers() {
     return await this.authService.listUsers();
   }
+
+  @Post('registration-setting')
+  @UseGuards(AdminGuard)
+  async setRegistrationEnabled(@Body() body: { enabled: boolean }) {
+    return await this.authService.setRegistrationEnabled(body.enabled);
+  }
+
+  @Get('registration-setting')
+  @UseGuards(AdminGuard)
+  async getRegistrationSetting() {
+    return await this.authService.isRegistrationEnabled();
+  }
 } 

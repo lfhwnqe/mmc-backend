@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, ListUsersCommand, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, ResendConfirmationCodeCommand, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, AdminListGroupsForUserCommand, ListUsersCommand, GetUserCommand, UpdateUserPoolCommand, DescribeUserPoolCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
@@ -38,13 +38,22 @@ export class AuthService {
   }
 
   async register(email: string, password: string) {
-    const command = new SignUpCommand({
-      ClientId: this.clientId,
-      Username: email,
-      Password: password,
-    });
-
     try {
+      // 先检查是否允许注册
+      const registrationStatus = await this.isRegistrationEnabled();
+      if (!registrationStatus.success || !registrationStatus.data.enabled) {
+        return {
+          success: false,
+          message: '当前未开放注册，请联系管理员',
+        };
+      }
+
+      const command = new SignUpCommand({
+        ClientId: this.clientId,
+        Username: email,
+        Password: password,
+      });
+
       const response = await this.cognitoClient.send(command);
       return {
         success: true,
@@ -271,6 +280,53 @@ export class AuthService {
         success: false,
         message: '获取用户列表失败',
         error: error.message,
+      };
+    }
+  }
+
+  async setRegistrationEnabled(enabled: boolean) {
+    try {
+      const command = new UpdateUserPoolCommand({
+        UserPoolId: this.userPoolId,
+        AdminCreateUserConfig: {
+          AllowAdminCreateUserOnly: !enabled
+        }
+      });
+
+      await this.cognitoClient.send(command);
+      return {
+        success: true,
+        message: `${enabled ? '开启' : '关闭'}注册成功`,
+        data: { enabled }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '更新注册设置失败',
+        error: error.message
+      };
+    }
+  }
+
+  async isRegistrationEnabled() {
+    try {
+      const command = new DescribeUserPoolCommand({
+        UserPoolId: this.userPoolId,
+      });
+
+      const response = await this.cognitoClient.send(command);
+      console.log('isRegistrationEnabled response:', response);
+      return {
+        success: true,
+        data: {
+          enabled: !response.UserPool.AdminCreateUserConfig?.AllowAdminCreateUserOnly
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: '获取注册设置失败',
+        error: error.message
       };
     }
   }
