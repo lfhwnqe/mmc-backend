@@ -1,9 +1,19 @@
-import { Body, Controller, Post, Get, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  Req,
+  UseGuards,
+  UseFilters,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, ConfirmSignUpDto, LoginDto } from './dto/auth.dto';
 import { Request } from 'express';
 import { AdminGuard } from './guards/admin.guard';
+import { HttpExceptionFilter } from 'src/filters/http-exception.filter';
 @Controller('auth')
+@UseFilters(HttpExceptionFilter) // 应用到整个控制器
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

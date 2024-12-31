@@ -22,9 +22,9 @@ async function bootstrap(): Promise<Handler> {
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalInterceptors(new TransformInterceptor());
     app.useGlobalFilters(new HttpExceptionFilter());
-    
+
     await app.init();
-    cachedServer = serverlessExpress({ 
+    cachedServer = serverlessExpress({
       app: expressApp,
       binarySettings: {
         isBinary: () => false,
@@ -56,10 +56,10 @@ export const handler: Handler = async (
     console.error('Lambda error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         message: 'Internal server error',
         error: error.message,
       }),
     };
   }
-}; 
+};

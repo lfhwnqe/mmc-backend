@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
@@ -12,13 +17,13 @@ export class AudioService {
     this.s3Client = new S3Client({
       region: this.configService.get('AWS_REGION'),
     });
-    
+
     const bucketName = this.configService.get('AUDIO_BUCKET_NAME');
     if (!bucketName) {
       throw new Error('AUDIO_BUCKET_NAME is not configured');
     }
     this.bucketName = bucketName;
-    
+
     console.log('Audio Service Configuration:', {
       region: this.configService.get('AWS_REGION'),
       bucketName: this.bucketName,
@@ -73,11 +78,11 @@ export class AudioService {
       await this.s3Client.send(command);
       return {
         success: true,
-        message: '文件删除成功'
+        message: '文件删除成功',
       };
     } catch (error) {
       console.error('Delete S3 file error:', error);
       throw error;
     }
   }
-} 
+}

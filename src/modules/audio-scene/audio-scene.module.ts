@@ -9,4 +9,4 @@ import { ConfigModule } from '@nestjs/config';
   controllers: [AudioSceneController],
   providers: [AudioSceneService, AudioService],
 })
-export class AudioSceneModule {} 
+export class AudioSceneModule {}

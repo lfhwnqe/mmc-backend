@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Body, Req, Query, Param, ForbiddenException, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Req,
+  Query,
+  Param,
+  ForbiddenException,
+  Delete,
+} from '@nestjs/common';
 import { AudioSceneService } from './audio-scene.service';
 import { CreateAudioSceneDto, QueryAudioSceneDto } from './dto/audio-scene.dto';
 
@@ -25,7 +35,11 @@ export class AudioSceneController {
     @Query() query: QueryAudioSceneDto,
   ) {
     const userId = req.user.sub;
-    return await this.audioSceneService.findBySceneName(userId, sceneName, query);
+    return await this.audioSceneService.findBySceneName(
+      userId,
+      sceneName,
+      query,
+    );
   }
 
   @Get(':sceneId')
@@ -43,4 +57,4 @@ export class AudioSceneController {
     const userId = req.user.sub;
     return this.audioSceneService.deleteScene(userId, id);
   }
-} 
+}

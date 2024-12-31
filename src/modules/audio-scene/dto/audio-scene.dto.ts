@@ -52,4 +52,4 @@ export class PaginatedResponseDto<T> {
   page: number;
   pageSize: number;
   totalPages: number;
-} 
+}

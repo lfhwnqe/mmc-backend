@@ -9,4 +9,4 @@ export default registerAs('auth', () => ({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test',
   },
-})); 
+}));

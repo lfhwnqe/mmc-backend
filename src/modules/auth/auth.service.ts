@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   CognitoIdentityProviderClient,
   SignUpCommand,
@@ -106,7 +110,7 @@ export class AuthService {
         PASSWORD: password,
       },
     });
-
+    throw new HttpException('test', 401);
     try {
       const response = await this.cognitoClient.send(command);
       return {

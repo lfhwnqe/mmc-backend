@@ -16,7 +16,7 @@ import configuration from './config/configuration';
     AuthModule,
     HealthModule,
     AudioSceneModule,
-    AudioModule
+    AudioModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -28,7 +28,7 @@ export class AppModule implements NestModule {
         '/auth/register',
         '/auth/confirm',
         '/auth/resend-code',
-        '/health/deep'
+        '/health/deep',
       )
       .forRoutes('*');
   }

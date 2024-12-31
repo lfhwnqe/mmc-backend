@@ -4,10 +4,8 @@ import { AudioService } from './audio.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [
-    ConfigModule,
-  ],
+  imports: [ConfigModule],
   controllers: [AudioController],
   providers: [AudioService],
 })
-export class AudioModule {} 
+export class AudioModule {}

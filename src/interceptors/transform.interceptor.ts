@@ -17,7 +17,7 @@ export class TransformInterceptor<T>
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
-      map(data => {
+      map((data) => {
         // 如果响应已经是标准格式，直接返回
         if (data && typeof data === 'object' && 'success' in data) {
           return {
@@ -34,4 +34,4 @@ export class TransformInterceptor<T>
       }),
     );
   }
-} 
+}
