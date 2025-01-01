@@ -7,6 +7,8 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 
 interface AuthStackProps extends cdk.StackProps {
   stage: string; // 环境标识：dev, test, prod
@@ -153,6 +155,49 @@ export class AuthStack extends cdk.Stack {
           : cdk.RemovalPolicy.DESTROY,
     });
 
+    // 创建 CloudFront 分发的 OAI (Origin Access Identity)
+    const cloudfrontOAI = new cloudfront.OriginAccessIdentity(
+      this,
+      'CloudFrontOAI',
+      {
+        comment: `OAI for ${id} ${stageName}`,
+      },
+    );
+
+    // 允许 CloudFront OAI 访问 S3 桶
+    audioBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [audioBucket.arnForObjects('*')],
+        principals: [
+          new iam.CanonicalUserPrincipal(
+            cloudfrontOAI.cloudFrontOriginAccessIdentityS3CanonicalUserId,
+          ),
+        ],
+      }),
+    );
+
+    // 创建 CloudFront 分发
+    const distribution = new cloudfront.Distribution(
+      this,
+      'AudioDistribution',
+      {
+        defaultBehavior: {
+          origin: new origins.S3Origin(audioBucket, {
+            originAccessIdentity: cloudfrontOAI,
+          }),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        },
+        enabled: true,
+        comment: `Audio distribution for ${id} ${stageName}`,
+        defaultRootObject: 'index.html',
+        priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // 使用最便宜的区域配置
+      },
+    );
+
     // 创建 Lambda 函数
     const handler = new lambda.Function(this, 'AuthHandler', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -170,6 +215,11 @@ export class AuthStack extends cdk.Stack {
       memorySize: 256,
       logRetention: cdk.aws_logs.RetentionDays.ONE_WEEK,
     });
+    // 为 Lambda 添加环境变量
+    handler.addEnvironment(
+      'CLOUDFRONT_DOMAIN',
+      distribution.distributionDomainName,
+    );
 
     // 创建 API Gateway 日志角色
     const apiGatewayLoggingRole = new iam.Role(this, 'ApiGatewayLoggingRole', {
@@ -283,6 +333,14 @@ export class AuthStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'AudioBucketArn', {
       value: audioBucket.bucketArn,
+    });
+    // 添加 CloudFront 相关输出
+    new cdk.CfnOutput(this, 'CloudFrontDomain', {
+      value: distribution.distributionDomainName,
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
+      value: distribution.distributionId,
     });
   }
 }

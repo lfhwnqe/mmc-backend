@@ -12,6 +12,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 export class AudioService {
   private s3Client: S3Client;
   private readonly bucketName: string;
+  private readonly cloudfrontDomain: string;
 
   constructor(private configService: ConfigService) {
     this.s3Client = new S3Client({
@@ -24,9 +25,16 @@ export class AudioService {
     }
     this.bucketName = bucketName;
 
+    const cloudfrontDomain = this.configService.get('CLOUDFRONT_DOMAIN');
+    if (!cloudfrontDomain) {
+      throw new Error('CLOUDFRONT_DOMAIN is not configured');
+    }
+    this.cloudfrontDomain = cloudfrontDomain;
+
     console.log('Audio Service Configuration:', {
       region: this.configService.get('AWS_REGION'),
       bucketName: this.bucketName,
+      cloudfrontDomain: this.cloudfrontDomain,
     });
   }
 
@@ -56,14 +64,16 @@ export class AudioService {
       Key: key,
     });
 
-    const signedUrl = await getSignedUrl(this.s3Client, command, {
+    const s3SignedUrl = await getSignedUrl(this.s3Client, command, {
       expiresIn: 3600, // URL 有效期1小时
     });
+
+    const cloudfrontUrl = `https://${this.cloudfrontDomain}/${key}`;
 
     return {
       success: true,
       data: {
-        url: signedUrl,
+        url: cloudfrontUrl,
       },
     };
   }
