@@ -59,15 +59,6 @@ export class AudioService {
   }
 
   async getSignedUrl(key: string) {
-    const command = new GetObjectCommand({
-      Bucket: this.bucketName,
-      Key: key,
-    });
-
-    const s3SignedUrl = await getSignedUrl(this.s3Client, command, {
-      expiresIn: 3600, // URL 有效期1小时
-    });
-
     const cloudfrontUrl = `https://${this.cloudfrontDomain}/${key}`;
 
     return {
