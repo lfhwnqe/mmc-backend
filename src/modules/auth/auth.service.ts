@@ -19,6 +19,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { CognitoIdentityServiceProvider } from 'aws-sdk';
 
 @Injectable()
 export class AuthService {
@@ -151,17 +152,38 @@ export class AuthService {
 
   async getUserInfo(token: string) {
     try {
-      const payload = await this.verifier.verify(token);
+      const cognitoIdentityServiceProvider =
+        new CognitoIdentityServiceProvider();
+      const params = {
+        AccessToken: token,
+      };
+
+      const response = await cognitoIdentityServiceProvider
+        .getUser(params)
+        .promise();
+
+      // 格式化用户信息
+      const userInfo = {
+        username: response.Username,
+        email: response.UserAttributes.find((attr) => attr.Name === 'email')
+          ?.Value,
+        // attributes: response.UserAttributes.reduce((acc, attr) => {
+        //   acc[attr.Name] = attr.Value;
+        //   return acc;
+        // }, {}),
+      };
+
       return {
         success: true,
-        data: {
-          sub: payload.sub,
-          email: payload['cognito:username'] || payload.email || payload.sub,
-        },
-        timestamp: new Date().toISOString(),
+        data: userInfo,
+        message: 'User info retrieved successfully',
       };
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      console.error('Get user info error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to get user info',
+      };
     }
   }
 
