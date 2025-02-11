@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 const configurations = {
   dev: () => ({
     aws: {
-      region: 'us-east-2',
+      region: 'us-east-1',
       // 测试环境特定配置
     },
     api: {
@@ -15,12 +15,12 @@ const configurations = {
 
   prod: () => ({
     aws: {
-      region: 'us-east-2',
+      region: 'us-east-1',
       // 生产环境特定配置
     },
     api: {
       cors: {
-        origin: 'https://mn.maomaocong.site',
+        origin: 'https://web3.maomaocong.site',
       },
     },
   }),

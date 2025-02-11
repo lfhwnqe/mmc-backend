@@ -8,8 +8,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "cdk": "cdk",
-    "cdk:deploy:dev": "CDK_DEFAULT_REGION=us-east-1 cdk deploy Mmc-Backend-Dev",
-    "cdk:deploy:prod": "CDK_DEFAULT_REGION=us-east-1 cdk deploy Mmc-Backend-Prod",
+    "cdk:deploy:dev": "CDK_DEFAULT_REGION=us-east-1 cdk deploy Mmc-Cdk-Backend-Dev",
+    "cdk:deploy:prod": "CDK_DEFAULT_REGION=us-east-1 cdk deploy Mmc-Cdk-Backend-Prod",
     "deploy:dev": "cdk deploy --stage dev",
     "deploy:prod": "cdk deploy --stage prod",
     "destroy:dev": "cdk destroy --stage dev",
@@ -22,6 +22,9 @@
     "typescript": "~5.3.3"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.525.0",
+    "@aws-sdk/client-dynamodb": "^3.525.0",
+    "@aws-sdk/lib-dynamodb": "^3.525.0",
     "aws-cdk-lib": "2.127.0",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"
