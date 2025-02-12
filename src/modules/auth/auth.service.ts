@@ -1,25 +1,21 @@
+import { Injectable } from '@nestjs/common';
 import {
-  HttpException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
-import {
-  CognitoIdentityProviderClient,
-  SignUpCommand,
-  InitiateAuthCommand,
-  ConfirmSignUpCommand,
-  ResendConfirmationCodeCommand,
   AdminAddUserToGroupCommand,
-  AdminRemoveUserFromGroupCommand,
   AdminListGroupsForUserCommand,
-  ListUsersCommand,
-  GetUserCommand,
-  UpdateUserPoolCommand,
+  AdminRemoveUserFromGroupCommand,
+  CognitoIdentityProvider,
+  CognitoIdentityProviderClient,
+  ConfirmSignUpCommand,
   DescribeUserPoolCommand,
+  GetUserCommand,
+  InitiateAuthCommand,
+  ListUsersCommand,
+  ResendConfirmationCodeCommand,
+  SignUpCommand,
+  UpdateUserPoolCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { ConfigService } from '@nestjs/config';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import { CognitoIdentityServiceProvider } from 'aws-sdk';
 
 @Injectable()
 export class AuthService {
@@ -152,15 +148,12 @@ export class AuthService {
 
   async getUserInfo(token: string) {
     try {
-      const cognitoIdentityServiceProvider =
-        new CognitoIdentityServiceProvider();
+      const cognitoIdentityServiceProvider = new CognitoIdentityProvider();
       const params = {
         AccessToken: token,
       };
 
-      const response = await cognitoIdentityServiceProvider
-        .getUser(params)
-        .promise();
+      const response = await cognitoIdentityServiceProvider.getUser(params);
 
       // 格式化用户信息
       const userInfo = {
