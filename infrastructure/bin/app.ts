@@ -2,31 +2,35 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { AuthStack } from '../lib/auth-stack';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// 根据环境加载对应的 .env 文件
+const stage = process.env.NODE_ENV || 'dev';
+const envPath = path.resolve(__dirname, `../../.env.${stage}`);
+dotenv.config({ path: envPath });
+
+console.log('Loading environment variables from:', envPath);
 
 const app = new cdk.App();
-const appName = 'Mmc-Cdk-Backend';
+// const appName = 'Mmc-Cdk-Backend';
 
 // 确保设置了默认区域
 // if (!process.env.CDK_DEFAULT_REGION) {
 //   throw new Error('CDK_DEFAULT_REGION environment variable is required');
 // }
 // console.log('process.env.CDK_DEFAULT_REGION:', process.env.CDK_DEFAULT_REGION);
-// 开发环境
-new AuthStack(app, `${appName}-Dev`, {
-  stage: 'dev',
+
+const stackName = `Mmc-Cdk-Backend-${stage.charAt(0).toUpperCase() + stage.slice(1)}`;
+new AuthStack(app, stackName, {
+  stage,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: 'us-east-1',
     // region: process.env.CDK_DEFAULT_REGION,
   },
-});
-
-// 生产环境
-new AuthStack(app, `${appName}-Prod`, {
-  stage: 'prod',
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: 'us-east-1',
-    // region: process.env.CDK_DEFAULT_REGION,
+  openApiConfig: {
+    apiKey: process.env.OPENAI_API_KEY || '',
+    apiUrl: process.env.OPENAI_API_URL || '',
   },
 });
