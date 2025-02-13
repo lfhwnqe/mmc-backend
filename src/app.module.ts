@@ -5,6 +5,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AuthMiddleware } from './modules/auth/middleware/auth.middleware';
 import { AudioSceneModule } from './modules/audio-scene/audio-scene.module';
 import { AudioModule } from './modules/audio/audio.module';
+import { AIModule } from './modules/ai/ai.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -17,6 +18,7 @@ import configuration from './config/configuration';
     HealthModule,
     AudioSceneModule,
     AudioModule,
+    AIModule,
   ],
 })
 export class AppModule implements NestModule {
@@ -29,6 +31,7 @@ export class AppModule implements NestModule {
         '/auth/confirm',
         '/auth/resend-code',
         '/health/deep',
+        '/ai/test',
       )
       .forRoutes('*');
   }
