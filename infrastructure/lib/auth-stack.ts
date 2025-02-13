@@ -12,6 +12,10 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 
 interface AuthStackProps extends cdk.StackProps {
   stage: string; // 环境标识：dev, test, prod
+  openApiConfig: {
+    apiKey: string;
+    apiUrl: string;
+  };
 }
 
 export class AuthStack extends cdk.Stack {
@@ -19,8 +23,8 @@ export class AuthStack extends cdk.Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
+    console.log('🌹props.openaiApiKey:', props.openApiConfig.apiKey);
     super(scope, id, props);
-
     const stageName = props.stage;
 
     // 创建 Cognito 用户池
@@ -210,16 +214,17 @@ export class AuthStack extends cdk.Stack {
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
         AUDIO_BUCKET_NAME: audioBucket.bucketName,
+        // 将对象配置序列化为 JSON 字符串
+        OPENAI_CONFIG: JSON.stringify({
+          apiKey: props.openApiConfig.apiKey,
+          apiUrl: props.openApiConfig.apiUrl,
+        }),
+        CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
       },
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
+      timeout: cdk.Duration.minutes(2),
+      memorySize: 1024,
       logRetention: cdk.aws_logs.RetentionDays.ONE_WEEK,
     });
-    // 为 Lambda 添加环境变量
-    handler.addEnvironment(
-      'CLOUDFRONT_DOMAIN',
-      distribution.distributionDomainName,
-    );
 
     // 创建 API Gateway 日志角色
     const apiGatewayLoggingRole = new iam.Role(this, 'ApiGatewayLoggingRole', {
