@@ -159,6 +159,41 @@ export class AuthStack extends cdk.Stack {
           : cdk.RemovalPolicy.DESTROY,
     });
 
+    // 创建图片存储桶
+    const imageBucket = new s3.Bucket(this, 'ImageBucket', {
+      bucketName: `${id}-${stageName}-image-bucket`.toLowerCase(),
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+          ],
+          allowedOrigins: [
+            'http://localhost:3000',
+            'https://en.maomaocong.site',
+            'https://*.maomaocong.site',
+            'http://localhost:3001',
+          ],
+          allowedHeaders: ['*'],
+          exposedHeaders: [
+            'ETag',
+            'x-amz-server-side-encryption',
+            'x-amz-request-id',
+            'x-amz-id-2',
+          ],
+        },
+      ],
+      removalPolicy:
+        props.stage === 'production'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+    });
+
     // 创建 CloudFront 分发的 OAI (Origin Access Identity)
     const cloudfrontOAI = new cloudfront.OriginAccessIdentity(
       this,
@@ -168,11 +203,24 @@ export class AuthStack extends cdk.Stack {
       },
     );
 
-    // 允许 CloudFront OAI 访问 S3 桶
+    // 允许 CloudFront OAI 访问音频 S3 桶
     audioBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetObject'],
         resources: [audioBucket.arnForObjects('*')],
+        principals: [
+          new iam.CanonicalUserPrincipal(
+            cloudfrontOAI.cloudFrontOriginAccessIdentityS3CanonicalUserId,
+          ),
+        ],
+      }),
+    );
+
+    // 允许 CloudFront OAI 访问图片 S3 桶
+    imageBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [imageBucket.arnForObjects('*')],
         principals: [
           new iam.CanonicalUserPrincipal(
             cloudfrontOAI.cloudFrontOriginAccessIdentityS3CanonicalUserId,
@@ -195,10 +243,21 @@ export class AuthStack extends cdk.Stack {
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         },
+        additionalBehaviors: {
+          'images/*': {
+            origin: new origins.S3Origin(imageBucket, {
+              originAccessIdentity: cloudfrontOAI,
+            }),
+            viewerProtocolPolicy:
+              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+            cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+          },
+        },
         enabled: true,
         comment: `Audio distribution for ${id} ${stageName}`,
         defaultRootObject: 'index.html',
-        priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // 使用最便宜的区域配置
+        priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
       },
     );
 
@@ -214,7 +273,7 @@ export class AuthStack extends cdk.Stack {
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
         AUDIO_BUCKET_NAME: audioBucket.bucketName,
-        // 将对象配置序列化为 JSON 字符串
+        IMAGE_BUCKET_NAME: imageBucket.bucketName,
         OPENAI_CONFIG: JSON.stringify({
           apiKey: props.openApiConfig.apiKey,
           apiUrl: props.openApiConfig.apiUrl,
@@ -293,7 +352,7 @@ export class AuthStack extends cdk.Stack {
     lambdaRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
-        resources: [`${audioBucket.bucketArn}/*`],
+        resources: [`${audioBucket.bucketArn}/*`, `${imageBucket.bucketArn}/*`],
       }),
     );
 
@@ -338,6 +397,14 @@ export class AuthStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'AudioBucketArn', {
       value: audioBucket.bucketArn,
+    });
+
+    new cdk.CfnOutput(this, 'ImageBucketName', {
+      value: imageBucket.bucketName,
+    });
+
+    new cdk.CfnOutput(this, 'ImageBucketArn', {
+      value: imageBucket.bucketArn,
     });
     // 添加 CloudFront 相关输出
     new cdk.CfnOutput(this, 'CloudFrontDomain', {

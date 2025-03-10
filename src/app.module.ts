@@ -6,6 +6,7 @@ import { AuthMiddleware } from './modules/auth/middleware/auth.middleware';
 import { AudioSceneModule } from './modules/audio-scene/audio-scene.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { AIModule } from './modules/ai/ai.module';
+import { ImageModule } from './modules/image/image.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -19,6 +20,7 @@ import configuration from './config/configuration';
     AudioSceneModule,
     AudioModule,
     AIModule,
+    ImageModule,
   ],
 })
 export class AppModule implements NestModule {

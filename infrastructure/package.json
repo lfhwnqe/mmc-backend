@@ -8,12 +8,12 @@
     "build": "tsc",
     "watch": "tsc -w",
     "cdk": "cdk",
-    "cdk:deploy:dev": "CDK_DEFAULT_REGION=us-east-1 cdk deploy Mmc-Cdk-Backend-Dev",
-    "cdk:deploy:prod": "CDK_DEFAULT_REGION=us-east-1 cdk deploy Mmc-Cdk-Backend-Prod",
-    "deploy:dev": "cdk deploy --stage dev",
-    "deploy:prod": "cdk deploy --stage prod",
-    "destroy:dev": "cdk destroy --stage dev",
-    "destroy:prod": "cdk destroy --stage prod"
+    "cdk:deploy:dev": "CDK_DEFAULT_REGION=us-east-1 NODE_ENV=dev cdk deploy",
+    "cdk:deploy:prod": "CDK_DEFAULT_REGION=us-east-1 NODE_ENV=prod cdk deploy",
+    "deploy:dev": "NODE_ENV=dev cdk deploy",
+    "deploy:prod": "NODE_ENV=prod cdk deploy",
+    "destroy:dev": "NODE_ENV=dev cdk destroy",
+    "destroy:prod": "NODE_ENV=prod cdk destroy"
   },
   "devDependencies": {
     "@types/node": "20.11.19",
