@@ -25,6 +25,22 @@ export class AudioSceneController {
   @Get()
   async findMine(@Req() req: any, @Query() query: QueryAudioSceneDto) {
     const userId = req.user.sub;
+
+    // 确保 page 和 pageSize 是数字类型
+    if (query.page && typeof query.page === 'string') {
+      query.page = parseInt(query.page, 10);
+    }
+    if (query.pageSize && typeof query.pageSize === 'string') {
+      query.pageSize = parseInt(query.pageSize, 10);
+    }
+
+    console.log('findMine query params:', {
+      userId,
+      page: query.page,
+      pageSize: query.pageSize,
+      type: typeof query.page,
+    });
+
     return await this.audioSceneService.findByUserId(userId, query);
   }
 
@@ -35,6 +51,23 @@ export class AudioSceneController {
     @Query() query: QueryAudioSceneDto,
   ) {
     const userId = req.user.sub;
+
+    // 确保 page 和 pageSize 是数字类型
+    if (query.page && typeof query.page === 'string') {
+      query.page = parseInt(query.page, 10);
+    }
+    if (query.pageSize && typeof query.pageSize === 'string') {
+      query.pageSize = parseInt(query.pageSize, 10);
+    }
+
+    console.log('findBySceneName query params:', {
+      userId,
+      sceneName,
+      page: query.page,
+      pageSize: query.pageSize,
+      type: typeof query.page,
+    });
+
     return await this.audioSceneService.findBySceneName(
       userId,
       sceneName,

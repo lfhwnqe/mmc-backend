@@ -48,7 +48,23 @@ export class AudioSceneService {
   }
 
   async findByUserId(userId: string, queryDto: QueryAudioSceneDto) {
-    const { page = 1, pageSize = 20 } = queryDto;
+    console.log('findByUserId params:', {
+      userId,
+      page: queryDto.page,
+      pageSize: queryDto.pageSize,
+      pageType: typeof queryDto.page,
+      pageSizeType: typeof queryDto.pageSize,
+    });
+
+    // 确保 page 和 pageSize 是数字
+    const page =
+      typeof queryDto.page === 'string'
+        ? parseInt(queryDto.page, 10)
+        : queryDto.page || 1;
+    const pageSize =
+      typeof queryDto.pageSize === 'string'
+        ? parseInt(queryDto.pageSize, 10)
+        : queryDto.pageSize || 20;
 
     // 首先获取总数
     const countResult = await this.dynamoDb.query({
@@ -62,6 +78,8 @@ export class AudioSceneService {
 
     const total = countResult.Count || 0;
     const totalPages = Math.ceil(total / pageSize);
+
+    console.log('Count result:', { total, totalPages, page, pageSize });
 
     // 如果没有数据，直接返回空结果
     if (total === 0) {
@@ -96,6 +114,11 @@ export class AudioSceneService {
       }),
     });
 
+    console.log('Query result:', {
+      itemCount: result.Items?.length || 0,
+      hasLastEvaluatedKey: !!result.LastEvaluatedKey,
+    });
+
     return {
       success: true,
       data: {
@@ -113,7 +136,24 @@ export class AudioSceneService {
     sceneName: string,
     queryDto: QueryAudioSceneDto,
   ) {
-    const { page = 1, pageSize = 20 } = queryDto;
+    console.log('findBySceneName params:', {
+      userId,
+      sceneName,
+      page: queryDto.page,
+      pageSize: queryDto.pageSize,
+      pageType: typeof queryDto.page,
+      pageSizeType: typeof queryDto.pageSize,
+    });
+
+    // 确保 page 和 pageSize 是数字
+    const page =
+      typeof queryDto.page === 'string'
+        ? parseInt(queryDto.page, 10)
+        : queryDto.page || 1;
+    const pageSize =
+      typeof queryDto.pageSize === 'string'
+        ? parseInt(queryDto.pageSize, 10)
+        : queryDto.pageSize || 20;
 
     const result = await this.dynamoDb.query({
       TableName: this.tableName,
@@ -135,6 +175,13 @@ export class AudioSceneService {
 
     const total = result.Count || 0;
     const totalPages = Math.ceil(total / pageSize);
+
+    console.log('Query result:', {
+      itemCount: result.Items?.length || 0,
+      hasLastEvaluatedKey: !!result.LastEvaluatedKey,
+      total,
+      totalPages,
+    });
 
     return {
       success: true,
@@ -176,22 +223,47 @@ export class AudioSceneService {
   }
 
   private async getPageKey(userId: string, page: number, pageSize: number) {
-    if (page <= 1) return undefined;
-
-    const offset = (page - 1) * pageSize;
-    const result = await this.dynamoDb.query({
-      TableName: this.tableName,
-      KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': userId,
-      },
-      Limit: 1,
-      ScanIndexForward: false,
-      Select: 'ALL_ATTRIBUTES',
-      ExclusiveStartKey: undefined, // 从头开始
+    console.log('getPageKey params:', {
+      userId,
+      page,
+      pageSize,
+      pageType: typeof page,
+      pageSizeType: typeof pageSize,
     });
 
-    return result.LastEvaluatedKey;
+    if (page <= 1) return undefined;
+
+    // 确保 page 和 pageSize 是数字
+    const pageNum = typeof page === 'string' ? parseInt(page, 10) : page;
+    const pageSizeNum =
+      typeof pageSize === 'string' ? parseInt(pageSize, 10) : pageSize;
+
+    const offset = (pageNum - 1) * pageSizeNum;
+    console.log('Calculated offset:', offset);
+
+    try {
+      const result = await this.dynamoDb.query({
+        TableName: this.tableName,
+        KeyConditionExpression: 'userId = :userId',
+        ExpressionAttributeValues: {
+          ':userId': userId,
+        },
+        Limit: 1,
+        ScanIndexForward: false,
+        Select: 'ALL_ATTRIBUTES',
+        ExclusiveStartKey: undefined, // 从头开始
+      });
+
+      console.log('getPageKey result:', {
+        hasLastEvaluatedKey: !!result.LastEvaluatedKey,
+        resultCount: result.Count,
+      });
+
+      return result.LastEvaluatedKey;
+    } catch (error) {
+      console.error('Error in getPageKey:', error);
+      return undefined;
+    }
   }
 
   async deleteScene(userId: string, sceneId: string) {
