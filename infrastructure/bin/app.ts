@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { AuthStack } from '../lib/auth-stack';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 
 // 根据环境加载对应的 .env 文件
 const stage = process.env.NODE_ENV || 'dev';
@@ -32,5 +33,13 @@ new AuthStack(app, stackName, {
   openApiConfig: {
     apiKey: process.env.OPENAI_API_KEY || '',
     apiUrl: process.env.OPENAI_API_URL || '',
+  },
+  bedrockModels: {
+    AMAZON_NOVA_PRO_V1_0:
+      bedrock.FoundationModelIdentifier.AMAZON_NOVA_PRO_V1_0,
+    AMAZON_NOVA_LITE_V1_0_300_K:
+      bedrock.FoundationModelIdentifier.AMAZON_NOVA_LITE_V1_0_300_K,
+    AMAZON_TITAN_EMBED_TEXT_V2_0:
+      bedrock.FoundationModelIdentifier.AMAZON_TITAN_EMBED_TEXT_V2_0,
   },
 });
