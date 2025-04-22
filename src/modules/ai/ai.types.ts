@@ -13,6 +13,7 @@ export interface ChatCompletionRequest {
     role: string;
     content: string;
   }>;
+  model?: string;
 }
 
 export interface ChatCompletionResponse {

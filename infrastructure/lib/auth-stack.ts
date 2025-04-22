@@ -27,7 +27,6 @@ export class AuthStack extends cdk.Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
-    console.log('🌹props.openaiApiKey:', props.openApiConfig.apiKey);
     super(scope, id, props);
     const stageName = props.stage;
 
@@ -282,10 +281,8 @@ export class AuthStack extends cdk.Stack {
           apiKey: props.openApiConfig.apiKey,
           apiUrl: props.openApiConfig.apiUrl,
         }),
-        OPENROUTER_CONFIG: JSON.stringify({
-          apiKey: props.openRouterConfig.apiKey,
-          apiUrl: props.openRouterConfig.apiUrl,
-        }),
+        OPENROUTER_BASE_URL: props.openRouterConfig.apiUrl,
+        OPENROUTER_API_KEY: props.openRouterConfig.apiKey,
         CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
       },
       timeout: cdk.Duration.minutes(2),
