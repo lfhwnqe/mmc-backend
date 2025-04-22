@@ -9,7 +9,6 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 
 interface AuthStackProps extends cdk.StackProps {
   stage: string; // 环境标识：dev, test, prod
@@ -17,8 +16,9 @@ interface AuthStackProps extends cdk.StackProps {
     apiKey: string;
     apiUrl: string;
   };
-  bedrockModels?: {
-    [key: string]: string | bedrock.FoundationModelIdentifier; // key是模型名称，value是Bedrock模型标识符
+  openRouterConfig: {
+    apiKey: string;
+    apiUrl: string;
   };
 }
 
@@ -265,49 +265,6 @@ export class AuthStack extends cdk.Stack {
       },
     );
 
-    // 创建Bedrock模型映射
-    const bedrockModels: Record<string, bedrock.FoundationModel> = {};
-
-    // 默认添加Claude V2模型
-    const defaultModel = bedrock.FoundationModel.fromFoundationModelId(
-      this,
-      'DefaultModel',
-      bedrock.FoundationModelIdentifier.AMAZON_NOVA_PRO_V1_0,
-    );
-    bedrockModels['default'] = defaultModel;
-
-    // 如果props中提供了bedrockModels，则添加这些模型
-    if (props.bedrockModels) {
-      Object.entries(props.bedrockModels).forEach(
-        ([modelName, modelIdOrIdentifier], index) => {
-          try {
-            // 直接使用传入的modelIdOrIdentifier值
-            const model = bedrock.FoundationModel.fromFoundationModelId(
-              this,
-              `Model${index}`,
-              modelIdOrIdentifier as any, // 使用类型断言处理不同类型
-            );
-            
-            bedrockModels[modelName] = model;
-          } catch (error) {
-            console.error(`无法创建Bedrock模型 ${modelName}: ${error}`);
-          }
-        },
-      );
-    }
-
-    // 创建模型信息映射，用于环境变量
-    const bedrockModelInfos = Object.entries(bedrockModels).reduce(
-      (acc, [modelName, model]) => {
-        acc[modelName] = {
-          modelId: model.modelId,
-          modelArn: model.modelArn,
-        };
-        return acc;
-      },
-      {} as Record<string, { modelId: string; modelArn: string }>,
-    );
-
     // 创建 Lambda 函数
     const handler = new lambda.Function(this, 'AuthHandler', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -325,11 +282,11 @@ export class AuthStack extends cdk.Stack {
           apiKey: props.openApiConfig.apiKey,
           apiUrl: props.openApiConfig.apiUrl,
         }),
+        OPENROUTER_CONFIG: JSON.stringify({
+          apiKey: props.openRouterConfig.apiKey,
+          apiUrl: props.openRouterConfig.apiUrl,
+        }),
         CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
-        BEDROCK_MODELS: JSON.stringify(bedrockModelInfos),
-        // 保留向后兼容性
-        BEDROCK_MODEL_ID: bedrockModels.default.modelId,
-        BEDROCK_MODEL_ARN: bedrockModels.default.modelArn,
       },
       timeout: cdk.Duration.minutes(2),
       memorySize: 1024,
@@ -471,17 +428,6 @@ export class AuthStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'LambdaFunctionUrl', {
       value: lambdaFuntionUrl.url,
-    });
-
-    // 添加 Bedrock 模型相关输出
-    Object.entries(bedrockModels).forEach(([modelName, model]) => {
-      new cdk.CfnOutput(this, `BedrockModel_${modelName}_Id`, {
-        value: model.modelId,
-      });
-
-      new cdk.CfnOutput(this, `BedrockModel_${modelName}_Arn`, {
-        value: model.modelArn,
-      });
     });
   }
 }
