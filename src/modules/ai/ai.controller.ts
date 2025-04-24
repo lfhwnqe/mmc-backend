@@ -5,10 +5,13 @@ import {
   HttpException,
   HttpStatus,
   Get,
+  Res,
 } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { ChatCompletionRequest } from './ai.types';
 import { ConfigService } from '@nestjs/config';
+import { Response } from 'express';
+import { mastra } from '../../mastra';
 
 @Controller('ai')
 export class AIController {
@@ -247,6 +250,89 @@ export class AIController {
         error.message || '测试 OpenRouter 配置失败',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Post('storytelling')
+  async storytelling(
+    @Body() request: { prompt: string },
+    @Res() res: Response,
+  ) {
+    try {
+      // 检查请求参数
+      console.log('Storytelling 原始请求:', JSON.stringify(request));
+      
+      // 确保存在提示内容
+      const promptContent = request?.prompt?.trim();
+      if (!promptContent) {
+        console.error('没有提供有效的故事提示');
+        throw new HttpException('请提供故事提示', HttpStatus.BAD_REQUEST);
+      }
+
+      console.log('Storytelling Agent - 有效请求内容:', {
+        promptContent,
+        contentLength: promptContent.length,
+      });
+
+      // 设置响应头，支持流式输出
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      // 从mastra实例获取storytellingAgent
+      const storytellingAgent = mastra.getAgent('storytellingAgent');
+      if (!storytellingAgent) {
+        throw new Error('Storytelling Agent not found in mastra instance');
+      }
+
+      console.log('获取到storytellingAgent，准备调用stream方法');
+
+      // 创建流式响应
+      const response = await storytellingAgent.stream([
+        {
+          role: 'user',
+          content: promptContent,
+        },
+      ]);
+
+      console.log('Stream调用成功，开始处理流式响应');
+
+      // 处理文本流
+      for await (const chunk of response.textStream) {
+        // 记录每个数据块
+        console.log(
+          'Data chunk:',
+          chunk.substring(0, 50) + (chunk.length > 50 ? '...' : '')
+        );
+        
+        // 发送数据块
+        res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+      }
+
+      // 发送完成信号
+      console.log('流式传输完成，发送done信号');
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error) {
+      console.error('Storytelling Agent Error:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+      
+      // 错误处理
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json');
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+          success: false,
+          message: error.message || 'Storytelling Agent 调用失败',
+        });
+      } else {
+        res.write(
+          `data: ${JSON.stringify({ error: error.message || 'Storytelling Agent 调用失败' })}\n\n`,
+        );
+        res.end();
+      }
     }
   }
 }
