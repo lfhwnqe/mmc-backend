@@ -277,10 +277,6 @@ export class AuthStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
         AUDIO_BUCKET_NAME: audioBucket.bucketName,
         IMAGE_BUCKET_NAME: imageBucket.bucketName,
-        OPENAI_CONFIG: JSON.stringify({
-          apiKey: props.openApiConfig.apiKey,
-          apiUrl: props.openApiConfig.apiUrl,
-        }),
         OPENROUTER_BASE_URL: props.openRouterConfig.apiUrl,
         OPENROUTER_API_KEY: props.openRouterConfig.apiKey,
         CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
@@ -430,11 +426,6 @@ export class AuthStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'LambdaFunctionUrl', {
       value: lambdaFuntionUrl.url,
-    });
-
-    // 输出 Azure OpenAI 配置
-    new cdk.CfnOutput(this, 'AzureOpenAIEmbeddingsDeployment', {
-      value: process.env.AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT || '未配置',
     });
   }
 }
