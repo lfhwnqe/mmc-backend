@@ -284,6 +284,11 @@ export class AuthStack extends cdk.Stack {
         OPENROUTER_BASE_URL: props.openRouterConfig.apiUrl,
         OPENROUTER_API_KEY: props.openRouterConfig.apiKey,
         CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
+        // 添加 Upstash 配置，用于 RAG 服务
+        UPSTASH_VECTOR_URL: process.env.UPSTASH_VECTOR_URL || '',
+        UPSTASH_VECTOR_TOKEN: process.env.UPSTASH_VECTOR_TOKEN || '',
+        // 添加 OPENAI_API_KEY
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
       },
       timeout: cdk.Duration.minutes(2),
       memorySize: 1024,
@@ -294,7 +299,7 @@ export class AuthStack extends cdk.Stack {
     });
 
     // 创建 API Gateway 日志角色
-    const apiGatewayLoggingRole = new iam.Role(this, 'ApiGatewayLoggingRole', {
+    new iam.Role(this, 'ApiGatewayLoggingRole', {
       assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -332,13 +337,13 @@ export class AuthStack extends cdk.Stack {
     });
 
     // 添加根路径代理
-    const proxy = api.root.addProxy({
+    api.root.addProxy({
       defaultIntegration: integration,
       anyMethod: true, // 允许所有 HTTP 方法
     });
 
     // 创建 IAM 策略允许认证用户访问 S3
-    const s3Policy = new iam.PolicyDocument({
+    new iam.PolicyDocument({
       statements: [
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
@@ -365,7 +370,7 @@ export class AuthStack extends cdk.Stack {
     );
 
     // 在 userPool 创建后添加
-    const adminGroup = new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
+    new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
       userPoolId: this.userPool.userPoolId,
       groupName: 'admin',
       description: 'Administrator group with full access',
@@ -425,6 +430,11 @@ export class AuthStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'LambdaFunctionUrl', {
       value: lambdaFuntionUrl.url,
+    });
+
+    // 输出 Azure OpenAI 配置
+    new cdk.CfnOutput(this, 'AzureOpenAIEmbeddingsDeployment', {
+      value: process.env.AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT || '未配置',
     });
   }
 }

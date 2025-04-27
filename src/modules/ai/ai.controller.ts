@@ -12,102 +12,16 @@ import { ChatCompletionRequest } from './ai.types';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { mastra } from '../../mastra';
+import { getMastra } from '../../mastra';
+import { RagService } from '../rag/rag.service';
 
 @Controller('ai')
 export class AIController {
   constructor(
     private readonly aiService: AIService,
     private readonly configService: ConfigService,
+    private readonly ragService: RagService,
   ) {}
-
-  @Post('chat')
-  async chat(@Body() request: ChatCompletionRequest) {
-    try {
-      console.log('AI Controller - Received request:', {
-        messageCount: request.messages?.length,
-        messages: request.messages?.map((m) => ({
-          role: m.role,
-          contentLength: m.content?.length,
-        })),
-      });
-
-      if (!request.messages || request.messages.length === 0) {
-        throw new HttpException('消息不能为空', HttpStatus.BAD_REQUEST);
-      }
-
-      const result = await this.aiService.chat(request);
-      console.log('AI Controller - Response:', {
-        success: true,
-        contentLength: result.content?.length,
-      });
-
-      return result;
-    } catch (error) {
-      console.error('AI Controller Error:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
-      throw new HttpException(
-        error.message || '处理请求时发生错误',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post('test')
-  async test(@Body() request: ChatCompletionRequest) {
-    try {
-      const config = this.configService.get('OPENAI_CONFIG');
-      if (!config) {
-        throw new Error('OPENAI_CONFIG is not defined');
-      }
-
-      const { apiKey, apiUrl } = JSON.parse(config);
-      console.log('🌹Test Config:', {
-        apiUrl,
-        apiKeyLength: apiKey?.length,
-      });
-
-      const response = await fetch(`${apiUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: request.messages,
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('API Response:', data);
-
-      return {
-        content: data.choices?.[0]?.message?.content || '',
-        raw: data, // 返回原始响应以便调试
-      };
-    } catch (error) {
-      console.error('Test API Error:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      });
-      throw new HttpException(
-        error.message || '测试 API 失败',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
 
   @Post('openrouter-test')
   async testOpenRouter(@Body() request: ChatCompletionRequest) {
@@ -261,7 +175,6 @@ export class AIController {
     try {
       // 检查请求参数
       console.log('Storytelling 原始请求:', JSON.stringify(request));
-      
       // 确保存在提示内容
       const promptContent = request?.prompt?.trim();
       if (!promptContent) {
@@ -302,9 +215,8 @@ export class AIController {
         // 记录每个数据块
         console.log(
           'Data chunk:',
-          chunk.substring(0, 50) + (chunk.length > 50 ? '...' : '')
+          chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''),
         );
-        
         // 发送数据块
         res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
       }
@@ -319,7 +231,6 @@ export class AIController {
         message: error.message,
         stack: error.stack,
       });
-      
       // 错误处理
       if (!res.headersSent) {
         res.setHeader('Content-Type', 'application/json');
@@ -333,6 +244,66 @@ export class AIController {
         );
         res.end();
       }
+    }
+  }
+
+  /**
+   * 使用RAG增强的AI聊天接口
+   */
+  @Post('rag-chat')
+  async ragChat(@Body() request: ChatCompletionRequest) {
+    try {
+      // 检查是否提供消息
+      if (!request.messages || request.messages.length === 0) {
+        throw new Error('消息不能为空');
+      }
+
+      // 获取Mastra实例并使用RAG代理
+      const mastraInstance = getMastra(this.ragService);
+      // 提取用户的最后一条消息作为查询
+      const lastUserMessage = request.messages
+        .filter((msg) => msg.role === 'user')
+        .pop();
+
+      if (!lastUserMessage) {
+        throw new Error('找不到用户消息');
+      }
+
+      // 获取RAG代理
+      const ragAgent = mastraInstance.getAgent('ragAgent');
+      if (!ragAgent) {
+        throw new Error('RAG代理未找到');
+      }
+
+      // 运行RAG代理
+      const result = await ragAgent.stream([
+        {
+          role: 'user',
+          content: lastUserMessage.content,
+        },
+      ]);
+
+      // 收集流中的所有文本
+      let fullContent = '';
+      for await (const chunk of result.textStream) {
+        fullContent += chunk;
+      }
+
+      return {
+        success: true,
+        content: fullContent,
+        // 暂时不返回model和usage信息，因为stream结果中可能没有
+      };
+    } catch (error) {
+      console.error('RAG聊天错误:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+      throw new HttpException(
+        error.message || 'RAG聊天处理失败',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

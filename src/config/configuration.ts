@@ -11,10 +11,6 @@ const configurations = {
         origin: 'http://localhost:3000',
       },
     },
-    OPENAI_CONFIG: JSON.stringify({
-      apiKey: process.env.OPENAI_API_KEY || '',
-      apiUrl: process.env.OPENAI_API_URL || 'https://api.openai.com/v1',
-    }),
   }),
 
   prod: () => ({
@@ -27,10 +23,6 @@ const configurations = {
         origin: 'https://web3.maomaocong.site',
       },
     },
-    OPENAI_CONFIG: JSON.stringify({
-      apiKey: process.env.OPENAI_API_KEY || '',
-      apiUrl: process.env.OPENAI_API_URL || 'https://api.openai.com/v1',
-    }),
   }),
 };
 

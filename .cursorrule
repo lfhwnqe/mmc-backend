@@ -1,0 +1,42 @@
+# mmc-backend 项目规范
+
+## 项目概述
+mmc-backend 是基于 NestJS 开发的后端服务，为 sst-english 前端应用提供 API 支持。该项目采用了 AWS 云服务架构，包括 Cognito 用户认证、S3 存储等。
+## 依赖安装
+本项目使用pnpm管理依赖，请使用pnpm install安装依赖
+
+## 核心功能
+- **用户管理**: 基于 AWS Cognito 的用户认证和管理
+- **音频内容**: 音频文件处理和管理
+- **AI 服务**: 提供 AI 相关的 API，如故事生成
+- **数据存储**: 使用 DynamoDB 存储应用数据
+- **基础设施**: 使用 CDK 管理 AWS 基础设施
+
+## 技术栈
+- **框架**: NestJS
+- **语言**: TypeScript
+- **数据库**: DynamoDB
+- **云服务**: AWS (Cognito, S3, CloudFront 等)
+- **基础设施**: AWS CDK
+
+## 目录结构
+- `src/`: 源代码目录
+  - `app.module.ts`: 主模块文件
+  - `config/`: 配置文件
+  - `auth/`: 认证相关模块
+  - `ai/`: AI 功能模块
+- `infrastructure/`: AWS CDK 基础设施代码
+  - `bin/`: CDK 应用入口
+  - `lib/`: CDK 组件库
+
+## 开发规范
+1. **模块结构**: 遵循 NestJS 模块化结构
+2. **命名约定**: 
+   - 控制器: `*.controller.ts`
+   - 服务: `*.service.ts`
+   - 模块: `*.module.ts`
+3. **错误处理**: 使用 NestJS 内置异常过滤器
+4. **环境变量**: 使用 .env 文件和 ConfigModule 管理
+5. **日志记录**: 使用 NestJS Logger 进行日志记录
+6. **API 文档**: 使用 Swagger 自动生成 API 文档
+7. **基础设施代码**: 将 AWS 资源定义为可复用的 CDK 构造 

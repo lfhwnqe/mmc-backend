@@ -8,6 +8,7 @@ import { AudioModule } from './modules/audio/audio.module';
 import { AIModule } from './modules/ai/ai.module';
 import { ImageModule } from './modules/image/image.module';
 import configuration from './config/configuration';
+import { RagModule } from './modules/rag/rag.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import configuration from './config/configuration';
     AudioModule,
     AIModule,
     ImageModule,
+    RagModule,
   ],
 })
 export class AppModule implements NestModule {
