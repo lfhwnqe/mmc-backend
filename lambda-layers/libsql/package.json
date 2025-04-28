@@ -1,0 +1,9 @@
+{
+  "name": "libsql-layer",
+  "version": "1.0.0",
+  "description": "Lambda layer for libsql dependencies",
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "libsql": "^0.4.7"
+  }
+} 

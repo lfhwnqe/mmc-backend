@@ -266,7 +266,7 @@ export class AuthStack extends cdk.Stack {
 
     // 创建 Lambda 函数
     const handler = new lambda.Function(this, 'AuthHandler', {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'lambda.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../dist')),
@@ -289,6 +289,15 @@ export class AuthStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(2),
       memorySize: 1024,
       logRetention: cdk.aws_logs.RetentionDays.ONE_WEEK,
+      layers: [
+        new lambda.LayerVersion(this, 'LibsqlLayer', {
+          code: lambda.Code.fromAsset(
+            path.join(__dirname, '../../lambda-layers/libsql-layer.zip'),
+          ),
+          compatibleRuntimes: [lambda.Runtime.NODEJS_22_X],
+          compatibleArchitectures: [lambda.Architecture.ARM_64],
+        }),
+      ],
     });
     const lambdaFuntionUrl = handler.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,

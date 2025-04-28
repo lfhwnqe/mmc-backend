@@ -1,48 +1,50 @@
-module.exports = function (options, webpack) {
+const path = require('path');
+const webpack = require('webpack');
+
+module.exports = function (options) {
   return {
     ...options,
     entry: ['./src/lambda.ts'],
-    externals: [
-      // 排除所有@libsql相关模块
-      /^@libsql\/.*/,
-      'libsql',
-      // AWS SDK是Lambda环境已有的
-      /^@aws-sdk\/.*/,
-    ],
+    externals: ['@libsql', 'libsql', '@libsql/client', '@libsql/hrana-client'],
     output: {
       ...options.output,
       filename: 'lambda.js',
       libraryTarget: 'commonjs2',
     },
     module: {
-      ...options.module,
       rules: [
-        ...(options.module?.rules || []),
+        // 忽略 .md 文件
         {
           test: /\.md$/,
           use: 'null-loader',
         },
+        // 忽略 .d.ts 文件
         {
           test: /\.d\.ts$/,
           use: 'null-loader',
         },
+        // 忽略 LICENSE 文件
+        {
+          test: /LICENSE$/,
+          use: 'null-loader',
+        },
+        // 忽略 .node 二进制文件
+        {
+          test: /\.node$/,
+          use: 'null-loader',
+        },
+        // 处理 .ts 文件
+        {
+          test: /\.ts$/, // 匹配 .ts 文件
+          use: 'ts-loader', // 使用 ts-loader 处理
+          exclude: /node_modules/, // 排除 node_modules 目录
+        },
       ],
     },
     resolve: {
-      ...options.resolve,
-      fallback: {
-        ...options.resolve?.fallback,
-        fs: false,
-        path: false,
-        util: false,
-        os: false,
-        stream: false,
-        http: false,
-        https: false,
-        crypto: false,
-        zlib: false,
-        net: false,
-        tls: false,
+      extensions: ['.ts', '.js'], // 支持 .ts 和 .js 文件扩展名
+      alias: {
+        src: path.resolve(__dirname, './src'),
       },
     },
     plugins: [
@@ -54,8 +56,6 @@ module.exports = function (options, webpack) {
             '@nestjs/microservices/microservices-module',
             '@nestjs/websockets/socket-module',
             'cache-manager',
-            '@libsql/isomorphic-ws',
-            '@libsql/isomorphic-fetch',
           ];
           return lazyImports.includes(resource);
         },
