@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Get,
   Res,
+  Logger,
 } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { ChatCompletionRequest } from './ai.types';
@@ -17,6 +18,8 @@ import { RagService } from '../rag/rag.service';
 
 @Controller('ai')
 export class AIController {
+  private readonly logger = new Logger(AIController.name);
+
   constructor(
     private readonly aiService: AIService,
     private readonly configService: ConfigService,
@@ -33,7 +36,7 @@ export class AIController {
         throw new Error('OpenRouter 配置未定义');
       }
 
-      console.log('OpenRouter Test - Request:', {
+      this.logger.log('OpenRouter Test - Request:', {
         baseUrl,
         apiKeyLength: apiKey?.length,
         messageCount: request.messages?.length,
@@ -52,7 +55,7 @@ export class AIController {
 
       // 确保API URL正确 - OpenRouter API应该直接使用baseUrl
       const apiUrl = `${baseUrl}/chat/completions`;
-      console.log('OpenRouter API URL:', apiUrl);
+      this.logger.log('OpenRouter API URL:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -72,7 +75,7 @@ export class AIController {
 
       // 获取响应文本，然后尝试解析为JSON
       const responseText = await response.text();
-      console.log('OpenRouter API Response Text:', responseText);
+      this.logger.log('OpenRouter API Response Text:', responseText);
 
       if (!response.ok) {
         // 尝试解析错误响应为JSON，如果失败则使用原始文本
@@ -80,11 +83,11 @@ export class AIController {
         try {
           if (responseText) {
             const errorData = JSON.parse(responseText);
-            console.error('OpenRouter API Error:', errorData);
+            this.logger.error('OpenRouter API Error:', errorData);
             errorMessage = errorData.error?.message || errorMessage;
           }
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
+          this.logger.error('Failed to parse error response:', parseError);
           errorMessage += ` - Raw response: ${responseText}`;
         }
         throw new Error(errorMessage);
@@ -98,9 +101,9 @@ export class AIController {
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log('OpenRouter API Response Data:', data);
+        this.logger.log('OpenRouter API Response Data:', data);
       } catch (parseError) {
-        console.error('JSON Parse Error:', parseError);
+        this.logger.error('JSON Parse Error:', parseError);
         throw new Error(
           `Failed to parse API response: ${responseText.substring(0, 100)}...`,
         );
@@ -112,7 +115,7 @@ export class AIController {
         !Array.isArray(data.choices) ||
         data.choices.length === 0
       ) {
-        console.error('Invalid response format:', data);
+        this.logger.error('Invalid response format:', data);
         throw new Error('Invalid response format from OpenRouter API');
       }
 
@@ -123,7 +126,7 @@ export class AIController {
         raw: data, // 返回原始响应以便调试
       };
     } catch (error) {
-      console.error('OpenRouter Test Error:', {
+      this.logger.error('OpenRouter Test Error:', {
         name: error.name,
         message: error.message,
         stack: error.stack,
@@ -155,7 +158,7 @@ export class AIController {
         },
       };
     } catch (error) {
-      console.error('OpenRouter Config Test Error:', {
+      this.logger.error('OpenRouter Config Test Error:', {
         name: error.name,
         message: error.message,
         stack: error.stack,
@@ -174,15 +177,15 @@ export class AIController {
   ) {
     try {
       // 检查请求参数
-      console.log('Storytelling 原始请求:', JSON.stringify(request));
+      this.logger.log('Storytelling 原始请求:', JSON.stringify(request));
       // 确保存在提示内容
       const promptContent = request?.prompt?.trim();
       if (!promptContent) {
-        console.error('没有提供有效的故事提示');
+        this.logger.error('没有提供有效的故事提示');
         throw new HttpException('请提供故事提示', HttpStatus.BAD_REQUEST);
       }
 
-      console.log('Storytelling Agent - 有效请求内容:', {
+      this.logger.log('Storytelling Agent - 有效请求内容:', {
         promptContent,
         contentLength: promptContent.length,
       });
@@ -192,41 +195,88 @@ export class AIController {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      // 从mastra实例获取storytellingAgent
-      const storytellingAgent = mastra.getAgent('storytellingAgent');
-      if (!storytellingAgent) {
-        throw new Error('Storytelling Agent not found in mastra instance');
+      // 检查OpenRouter API环境变量
+      const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+      if (!openRouterApiKey) {
+        this.logger.error(
+          'OPENROUTER_API_KEY环境变量未设置，这会导致Storytelling Agent调用失败',
+        );
+        throw new Error('OpenRouter API Key未配置');
       }
 
-      console.log('获取到storytellingAgent，准备调用stream方法');
+      // 从mastra实例获取storytellingAgent
+      try {
+        const storytellingAgent = mastra.getAgent('storytellingAgent');
+        if (!storytellingAgent) {
+          this.logger.error('storytellingAgent不存在于mastra实例中');
+          throw new Error('Storytelling Agent not found in mastra instance');
+        }
+        this.logger.log('成功获取到storytellingAgent，准备调用stream方法');
+      } catch (agentError) {
+        this.logger.error('获取storytellingAgent失败:', {
+          name: agentError.name,
+          message: agentError.message,
+          stack: agentError.stack,
+        });
+        throw new Error(`获取Storytelling Agent失败: ${agentError.message}`);
+      }
+
+      const storytellingAgent = mastra.getAgent('storytellingAgent');
 
       // 创建流式响应
-      const response = await storytellingAgent.stream([
-        {
-          role: 'user',
-          content: promptContent,
-        },
-      ]);
-
-      console.log('Stream调用成功，开始处理流式响应');
-
-      // 处理文本流
-      for await (const chunk of response.textStream) {
-        // 记录每个数据块
-        console.log(
-          'Data chunk:',
-          chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''),
-        );
-        // 发送数据块
-        res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+      let response;
+      try {
+        this.logger.log('准备调用storytellingAgent.stream方法');
+        response = await storytellingAgent.stream([
+          {
+            role: 'user',
+            content: promptContent,
+          },
+        ]);
+        this.logger.log('Stream调用成功，获取到响应对象');
+      } catch (streamError) {
+        this.logger.error('调用storytellingAgent.stream方法失败:', {
+          name: streamError.name,
+          message: streamError.message,
+          stack: streamError.stack,
+        });
+        throw new Error(`调用stream方法失败: ${streamError.message}`);
       }
 
-      // 发送完成信号
-      console.log('流式传输完成，发送done信号');
-      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-      res.end();
+      // 检查response对象
+      if (!response || !response.textStream) {
+        this.logger.error('未获取到有效的stream响应', { response });
+        throw new Error('未获取到有效的stream响应');
+      }
+
+      this.logger.log('开始处理流式响应');
+
+      // 处理文本流
+      try {
+        for await (const chunk of response.textStream) {
+          // 记录每个数据块
+          this.logger.log(
+            'Data chunk:',
+            chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''),
+          );
+          // 发送数据块
+          res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+        }
+
+        // 发送完成信号
+        this.logger.log('流式传输完成，发送done信号');
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+      } catch (streamReadError) {
+        this.logger.error('读取流数据失败:', {
+          name: streamReadError.name,
+          message: streamReadError.message,
+          stack: streamReadError.stack,
+        });
+        throw new Error(`读取流数据失败: ${streamReadError.message}`);
+      }
     } catch (error) {
-      console.error('Storytelling Agent Error:', {
+      this.logger.error('Storytelling Agent Error:', {
         name: error.name,
         message: error.message,
         stack: error.stack,
@@ -237,10 +287,14 @@ export class AIController {
         res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
           success: false,
           message: error.message || 'Storytelling Agent 调用失败',
+          details: error.cause || error.stack?.split('\n')[0] || 'fetch failed',
         });
       } else {
         res.write(
-          `data: ${JSON.stringify({ error: error.message || 'Storytelling Agent 调用失败' })}\n\n`,
+          `data: ${JSON.stringify({
+            error: error.message || 'Storytelling Agent 调用失败',
+            details: error.cause || 'fetch failed',
+          })}\n\n`,
         );
         res.end();
       }
@@ -295,7 +349,7 @@ export class AIController {
         // 暂时不返回model和usage信息，因为stream结果中可能没有
       };
     } catch (error) {
-      console.error('RAG聊天错误:', {
+      this.logger.error('RAG聊天错误:', {
         name: error.name,
         message: error.message,
         stack: error.stack,

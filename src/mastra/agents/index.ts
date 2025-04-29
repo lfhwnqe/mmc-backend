@@ -1,9 +1,28 @@
 import { Agent } from '@mastra/core';
 // import { weatherTool } from '../tools';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('MastraAgents');
+
+// 添加构建时间标记，便于验证何时加载环境变量
+const buildTime = new Date().toISOString();
+logger.log(`Mastra Agent模块初始化时间: ${buildTime}`);
+
+// 检查OpenRouter API Key是否存在
+const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+if (!openRouterApiKey) {
+  logger.warn(
+    `⚠️ OPENROUTER_API_KEY环境变量未设置，Storytelling Agent可能无法正常工作 (初始化时间: ${buildTime})`,
+  );
+} else {
+  logger.log(
+    `OPENROUTER_API_KEY已配置，值长度: ${openRouterApiKey.length} (初始化时间: ${buildTime})`,
+  );
+}
 
 const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: openRouterApiKey,
 });
 
 export const storytellingAgent = new Agent({
@@ -21,3 +40,4 @@ export const storytellingAgent = new Agent({
   model: openrouter.chat('microsoft/mai-ds-r1:free'),
   // tools: { weatherTool },
 });
+

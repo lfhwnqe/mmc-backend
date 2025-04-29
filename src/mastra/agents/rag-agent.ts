@@ -2,6 +2,9 @@ import { Agent } from '@mastra/core';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createRagTool } from '../tools/rag-tool';
 import { RagService } from '../../modules/rag/rag.service';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('RagAgent');
 
 /**
  * 创建RAG增强的AI助手
@@ -9,8 +12,16 @@ import { RagService } from '../../modules/rag/rag.service';
  * @returns RAG增强的AI助手
  */
 export function createRagAgent(ragService: RagService) {
+  // 检查OpenRouter API Key是否存在
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+  if (!openRouterApiKey) {
+    logger.warn('⚠️ OPENROUTER_API_KEY环境变量未设置，RAG Agent可能无法正常工作');
+  } else {
+    logger.log('OPENROUTER_API_KEY已配置');
+  }
+
   const openrouter = createOpenRouter({
-    apiKey: process.env.OPENROUTER_API_KEY,
+    apiKey: openRouterApiKey,
   });
 
   const model = openrouter.chat('anthropic/claude-3.5-sonnet');

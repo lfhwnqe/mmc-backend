@@ -21,12 +21,39 @@ const app = new cdk.App();
 // }
 // console.log('process.env.CDK_DEFAULT_REGION:', process.env.CDK_DEFAULT_REGION);
 
+// 检查关键环境变量
+if (!process.env.OPENAI_API_KEY) {
+  console.warn(
+    '\x1b[33m%s\x1b[0m',
+    '⚠️  警告: OPENAI_API_KEY 环境变量未设置！',
+  );
+  console.warn('\x1b[33m%s\x1b[0m', '   RAG功能可能无法正常工作。');
+  console.warn(
+    '\x1b[33m%s\x1b[0m',
+    '   请设置环境变量: export OPENAI_API_KEY=你的密钥',
+  );
+}
+
+if (!process.env.OPENROUTER_API_KEY) {
+  console.warn(
+    '\x1b[33m%s\x1b[0m',
+    '⚠️  警告: OPENROUTER_API_KEY 环境变量未设置！',
+  );
+  console.warn('\x1b[33m%s\x1b[0m', '   Storytelling Agent可能无法正常工作。');
+  console.warn(
+    '\x1b[33m%s\x1b[0m',
+    '   请设置环境变量: export OPENROUTER_API_KEY=你的密钥',
+  );
+}
+
 const stackName = `Mmc-Cdk-Backend-${stage.charAt(0).toUpperCase() + stage.slice(1)}`;
-const openRouterConfig = {
-  apiKey: process.env.OPEN_ROUTER_KEY || '',
-  apiUrl: process.env.OPEN_ROUTER_URL || '',
-};
-console.log('openRouterConfig:', openRouterConfig);
+
+// 显示更多部署信息
+console.log('部署信息:');
+console.log(' - 堆栈名称:', stackName);
+console.log(' - 环境:', stage);
+console.log(' - 区域:', 'us-east-1');
+
 new AuthStack(app, stackName, {
   stage,
   env: {
@@ -34,9 +61,4 @@ new AuthStack(app, stackName, {
     region: 'us-east-1',
     // region: process.env.CDK_DEFAULT_REGION,
   },
-  openApiConfig: {
-    apiKey: process.env.OPENAI_API_KEY || '',
-    apiUrl: process.env.OPENAI_API_URL || '',
-  },
-  openRouterConfig,
 });

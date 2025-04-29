@@ -12,14 +12,6 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 
 interface AuthStackProps extends cdk.StackProps {
   stage: string; // 环境标识：dev, test, prod
-  openApiConfig: {
-    apiKey: string;
-    apiUrl: string;
-  };
-  openRouterConfig: {
-    apiKey: string;
-    apiUrl: string;
-  };
 }
 
 export class AuthStack extends cdk.Stack {
@@ -277,13 +269,13 @@ export class AuthStack extends cdk.Stack {
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
         AUDIO_BUCKET_NAME: audioBucket.bucketName,
         IMAGE_BUCKET_NAME: imageBucket.bucketName,
-        OPENROUTER_BASE_URL: props.openRouterConfig.apiUrl,
-        OPENROUTER_API_KEY: props.openRouterConfig.apiKey,
+        OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL || '',
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
         CLOUDFRONT_DOMAIN: distribution.distributionDomainName,
         // 添加 Upstash 配置，用于 RAG 服务
         UPSTASH_VECTOR_URL: process.env.UPSTASH_VECTOR_URL || '',
         UPSTASH_VECTOR_TOKEN: process.env.UPSTASH_VECTOR_TOKEN || '',
-        // 添加 OPENAI_API_KEY
+        // 添加 OPENAI_API_KEY，确保RAG服务和Mastra可以正常工作
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
       },
       timeout: cdk.Duration.minutes(2),
@@ -298,6 +290,8 @@ export class AuthStack extends cdk.Stack {
           compatibleArchitectures: [lambda.Architecture.ARM_64],
         }),
       ],
+      // 确保Lambda函数可以访问互联网
+      vpc: undefined, // 不放入VPC，这样能直接访问互联网
     });
     const lambdaFuntionUrl = handler.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
@@ -374,6 +368,19 @@ export class AuthStack extends cdk.Stack {
       }),
     );
 
+    // 为 Lambda 添加网络访问权限
+    lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'ec2:CreateNetworkInterface',
+          'ec2:DescribeNetworkInterfaces',
+          'ec2:DeleteNetworkInterface',
+        ],
+        resources: ['*'],
+      }),
+    );
+
     // 在 userPool 创建后添加
     new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
       userPoolId: this.userPool.userPoolId,
@@ -435,6 +442,15 @@ export class AuthStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'LambdaFunctionUrl', {
       value: lambdaFuntionUrl.url,
+    });
+    new cdk.CfnOutput(this, 'OPENROUTER_BASE_URL', {
+      value: process.env.OPENROUTER_BASE_URL || '',
+    });
+    new cdk.CfnOutput(this, 'OPENROUTER_API_KEY', {
+      value: process.env.OPENROUTER_API_KEY || '',
+    });
+    new cdk.CfnOutput(this, 'OPENAI_API_KEY', {
+      value: process.env.OPENAI_API_KEY || '',
     });
   }
 }

@@ -20,8 +20,21 @@ export class RagService {
   private readonly chunkSize: number = 500;
   private readonly chunkOverlap: number = 50;
   private readonly embeddingModel = 'text-embedding-3-small';
+  private readonly openaiApiKey: string;
 
   constructor(private configService: ConfigService) {
+    // 获取API密钥，优先使用配置服务，然后回退到环境变量
+    this.openaiApiKey =
+      this.configService.get('OPENAI_API_KEY') || process.env.OPENAI_API_KEY;
+
+    if (!this.openaiApiKey) {
+      this.logger.warn('OPENAI_API_KEY未配置，RAG服务可能无法正常工作');
+    } else {
+      this.logger.log('OPENAI_API_KEY已配置');
+      // 确保环境变量也被设置，因为一些库可能直接从环境变量读取
+      process.env.OPENAI_API_KEY = this.openaiApiKey;
+    }
+
     // 初始化Upstash向量存储
     this.vectorStore = new Index<VectorMetadata>({
       url: this.configService.get('UPSTASH_VECTOR_URL'),
@@ -33,6 +46,7 @@ export class RagService {
       upstashVectorUrl: this.configService.get('UPSTASH_VECTOR_URL')
         ? '已配置'
         : '未配置',
+      openaiApiKey: this.openaiApiKey ? '已配置' : '未配置',
     });
   }
 
@@ -43,6 +57,10 @@ export class RagService {
    */
   private async generateEmbedding(text: string): Promise<number[]> {
     try {
+      if (!this.openaiApiKey) {
+        throw new Error('OPENAI_API_KEY未配置，无法生成嵌入向量');
+      }
+
       // 完全按照Mastra官方文档示例处理
       const { embeddings } = await embedMany({
         model: openai.embedding(this.embeddingModel),
@@ -69,6 +87,10 @@ export class RagService {
     isMarkdown = true,
   ): Promise<number> {
     try {
+      if (!this.openaiApiKey) {
+        throw new Error('OPENAI_API_KEY未配置，无法添加文档');
+      }
+
       // 使用Mastra将文本转换为文档并进行分块
       let document;
       if (isMarkdown) {

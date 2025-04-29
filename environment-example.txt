@@ -1,0 +1,21 @@
+# MMC 后端环境变量示例文件
+# 复制此文件为 .env.development 或 .env.production 并填写相应的值
+
+# ===== OpenRouter 配置 =====
+# 此密钥用于Storytelling Agent
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# ===== OpenAI 配置 =====
+# 此密钥用于RAG功能和文本嵌入
+OPENAI_API_KEY=your_openai_api_key_here
+
+# ===== Upstash Vector配置 =====
+# 用于向量数据库存储
+UPSTASH_VECTOR_URL=your_upstash_vector_url_here
+UPSTASH_VECTOR_TOKEN=your_upstash_vector_token_here
+
+# ===== 其他可选配置 =====
+# 留空使用默认值
+# NODE_ENV=dev
+# AWS_REGION=us-east-1 
