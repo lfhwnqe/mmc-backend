@@ -295,8 +295,36 @@ export class AuthStack extends cdk.Stack {
     });
     const lambdaFuntionUrl = handler.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
+      invokeMode: lambda.InvokeMode.RESPONSE_STREAM,
     });
 
+    // 创建测试流式响应的 Lambda
+    const streamTestHandler = new lambda.Function(this, 'StreamTestHandler', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../src/stream-test-handler')),
+      role: lambdaRole, // 使用相同的角色
+      environment: {
+        NODE_ENV: props.stage,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      logRetention: cdk.aws_logs.RetentionDays.ONE_WEEK
+    });
+
+    // 添加函数 URL
+    const streamTestUrl = streamTestHandler.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      invokeMode: lambda.InvokeMode.RESPONSE_STREAM,
+    });
+
+    // 输出测试函数 URL
+    new cdk.CfnOutput(this, 'StreamTestFunctionUrl', {
+      value: streamTestUrl.url,
+      description: '测试流式响应的函数 URL'
+    });
+        
     // 创建 API Gateway 日志角色
     new iam.Role(this, 'ApiGatewayLoggingRole', {
       assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),

@@ -5,16 +5,16 @@ import {
   HttpException,
   HttpStatus,
   Get,
-  Res,
   Logger,
+  Res,
 } from '@nestjs/common';
 import { AIService } from './ai.service';
 import { ChatCompletionRequest } from './ai.types';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
 import { mastra } from '../../mastra';
 import { getMastra } from '../../mastra';
 import { RagService } from '../rag/rag.service';
+import { Response as ExpressResponse } from 'express';
 
 @Controller('ai')
 export class AIController {
@@ -172,14 +172,28 @@ export class AIController {
 
   @Post('storytelling')
   async storytelling(
-    @Body() request: { prompt: string },
-    @Res() res: Response,
+    @Body()
+    request: {
+      prompt?: string;
+      messages?: Array<{ role: string; content: string }>;
+      id?: string;
+    },
   ) {
     try {
       // 检查请求参数
       this.logger.log('Storytelling 原始请求:', JSON.stringify(request));
-      // 确保存在提示内容
-      const promptContent = request?.prompt?.trim();
+
+      // 确保存在提示内容 - 支持两种格式：直接的prompt字段或messages数组
+      let promptContent = request?.prompt?.trim();
+
+      // 如果没有prompt字段但有messages数组，从消息中提取用户内容
+      if (!promptContent && request?.messages && request.messages.length > 0) {
+        const userMessage = request.messages.find((msg) => msg.role === 'user');
+        if (userMessage) {
+          promptContent = userMessage.content;
+        }
+      }
+
       if (!promptContent) {
         this.logger.error('没有提供有效的故事提示');
         throw new HttpException('请提供故事提示', HttpStatus.BAD_REQUEST);
@@ -189,11 +203,6 @@ export class AIController {
         promptContent,
         contentLength: promptContent.length,
       });
-
-      // 设置响应头，支持流式输出
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
 
       // 检查OpenRouter API环境变量
       const openRouterApiKey = process.env.OPENROUTER_API_KEY;
@@ -255,18 +264,8 @@ export class AIController {
       try {
         for await (const chunk of response.textStream) {
           // 记录每个数据块
-          this.logger.log(
-            'Data chunk:',
-            chunk.substring(0, 50) + (chunk.length > 50 ? '...' : ''),
-          );
-          // 发送数据块
-          res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+          this.logger.log('Storytelling Data chunk:', chunk);
         }
-
-        // 发送完成信号
-        this.logger.log('流式传输完成，发送done信号');
-        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-        res.end();
       } catch (streamReadError) {
         this.logger.error('读取流数据失败:', {
           name: streamReadError.name,
@@ -275,6 +274,13 @@ export class AIController {
         });
         throw new Error(`读取流数据失败: ${streamReadError.message}`);
       }
+
+      return {
+        success: true,
+        content: response.textStream.join(''),
+        model: response.model,
+        raw: response, // 返回原始响应以便调试
+      };
     } catch (error) {
       this.logger.error('Storytelling Agent Error:', {
         name: error.name,
@@ -282,22 +288,10 @@ export class AIController {
         stack: error.stack,
       });
       // 错误处理
-      if (!res.headersSent) {
-        res.setHeader('Content-Type', 'application/json');
-        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-          success: false,
-          message: error.message || 'Storytelling Agent 调用失败',
-          details: error.cause || error.stack?.split('\n')[0] || 'fetch failed',
-        });
-      } else {
-        res.write(
-          `data: ${JSON.stringify({
-            error: error.message || 'Storytelling Agent 调用失败',
-            details: error.cause || 'fetch failed',
-          })}\n\n`,
-        );
-        res.end();
-      }
+      throw new HttpException(
+        error.message || 'Storytelling Agent 调用失败',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -356,6 +350,197 @@ export class AIController {
       });
       throw new HttpException(
         error.message || 'RAG聊天处理失败',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * 使用RAG增强的AI聊天接口 - 流式响应版本
+   */
+  @Post('stream/rag-chat')
+  async streamRagChat(@Body() request: ChatCompletionRequest) {
+    // 检查是否提供消息
+    if (!request.messages || request.messages.length === 0) {
+      throw new HttpException('消息不能为空', HttpStatus.BAD_REQUEST);
+    }
+
+    // 获取Mastra实例并使用RAG代理
+    const mastraInstance = getMastra(this.ragService);
+    // 提取用户的最后一条消息作为查询
+    const lastUserMessage = request.messages
+      .filter((msg) => msg.role === 'user')
+      .pop();
+
+    if (!lastUserMessage) {
+      throw new HttpException('找不到用户消息', HttpStatus.BAD_REQUEST);
+    }
+
+    // 获取RAG代理
+    const ragAgent = mastraInstance.getAgent('ragAgent');
+    if (!ragAgent) {
+      throw new HttpException(
+        'RAG代理未找到',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    this.logger.log('开始RAG流式请求处理', {
+      userMessage:
+        lastUserMessage.content.substring(0, 50) +
+        (lastUserMessage.content.length > 50 ? '...' : ''),
+    });
+
+    // 运行RAG代理
+    const result = await ragAgent.stream([
+      {
+        role: 'user',
+        content: lastUserMessage.content,
+      },
+    ]);
+
+    // 检查response对象
+    if (!result || !result.textStream) {
+      this.logger.error('未获取到有效的stream响应', { result });
+      throw new Error('未获取到有效的stream响应');
+    }
+
+    this.logger.log('获取到stream响应，开始传输数据');
+
+    // 处理文本流
+    try {
+      // 收集所有内容
+      let allContent = '';
+      const sseChunks = [];
+
+      for await (const chunk of result.textStream) {
+        // 记录每个数据块
+        this.logger.debug('RAG数据块:', chunk);
+        allContent += chunk;
+
+        // 为SSE格式准备数据块
+        const jsonString = JSON.stringify({ content: chunk });
+        sseChunks.push(`data: ${jsonString}\n\n`);
+      }
+
+      // 添加完成标记
+      sseChunks.push(`data: ${JSON.stringify({ done: true })}\n\n`);
+
+      // 返回SSE格式的完整响应
+      this.logger.log('RAG流式传输准备完成，数据长度:', allContent.length);
+
+      return {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: sseChunks.join(''),
+      };
+    } catch (error) {
+      this.logger.error('处理RAG流数据时出错:', error);
+      throw new HttpException(
+        `处理RAG流数据失败: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * 故事讲述 - 流式响应版本 (使用/stream路径)
+   */
+  @Post('stream/storytelling')
+  async streamStorytelling(
+    @Body()
+    request: {
+      prompt?: string;
+      messages?: Array<{ role: string; content: string }>;
+      id?: string;
+    },
+    @Res() res: ExpressResponse,
+  ) {
+    this.logger.log(
+      '调用 streamStorytelling，原始请求:',
+      JSON.stringify(request),
+    );
+
+    // 确保存在提示内容 - 支持两种格式：直接的prompt字段或messages数组
+    let promptContent = request?.prompt?.trim();
+
+    // 如果没有prompt字段但有messages数组，从消息中提取用户内容
+    if (!promptContent && request?.messages && request.messages.length > 0) {
+      const userMessage = request.messages.find((msg) => msg.role === 'user');
+      if (userMessage) {
+        promptContent = userMessage.content;
+      }
+    }
+
+    if (!promptContent) {
+      this.logger.error('没有提供有效的故事提示');
+      throw new HttpException('请提供故事提示', HttpStatus.BAD_REQUEST);
+    }
+
+    this.logger.log('流式Storytelling Agent - 有效请求内容:', {
+      promptContent,
+      contentLength: promptContent.length,
+    });
+
+    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+    if (!openRouterApiKey) {
+      this.logger.error(
+        'OPENROUTER_API_KEY环境变量未设置，这会导致Storytelling Agent调用失败',
+      );
+      throw new HttpException(
+        'OpenRouter API Key未配置',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const storytellingAgent = mastra.getAgent('storytellingAgent');
+    if (!storytellingAgent) {
+      this.logger.error('storytellingAgent不存在于mastra实例中');
+      throw new HttpException(
+        'Storytelling Agent not found in mastra instance',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    this.logger.log('成功获取到storytellingAgent，准备调用stream方法');
+
+    try {
+      const agentStream = await storytellingAgent.stream([
+        {
+          role: 'user',
+          content: promptContent,
+        },
+      ]);
+      this.logger.log('Mastra agent stream调用成功，获取到流对象');
+
+      // 设置SSE响应所需的头信息
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      for await (const chunk of agentStream.textStream) {
+        res.write(chunk); // chunk 可是 Buffer/String，保持原样
+      }
+      res.end();
+    } catch (error) {
+      this.logger.error('处理 streamStorytelling 时出错:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack, // 记录堆栈信息以便调试
+      });
+
+      // 如果错误已经是 HttpException，直接抛出，让 NestJS 处理
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // 对于其他错误，包装成 HttpException
+      throw new HttpException(
+        error.message || 'Storytelling Agent 调用或流处理失败',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
