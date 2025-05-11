@@ -23,6 +23,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "deploy:dev": "yarn build:lambda && cd infrastructure && yarn cdk:deploy:dev",
     "deploy:prod": "yarn build:lambda && cd infrastructure && yarn cdk:deploy:prod",
+    "deploy:stream:dev": "./deploy-with-stream.sh dev",
+    "deploy:stream:prod": "./deploy-with-stream.sh prod",
     "cdk:destroy": "cd infrastructure && yarn cdk destroy",
     "build:layer": "mkdir -p lambda-layers && chmod +x lambda-layers/build-layer.sh && lambda-layers/build-layer.sh",
     "deploy:dev:script": "chmod +x ./deploy-dev.sh && ./deploy-dev.sh",
