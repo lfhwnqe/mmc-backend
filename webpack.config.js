@@ -4,11 +4,14 @@ const webpack = require('webpack');
 module.exports = function (options) {
   return {
     ...options,
-    entry: ['./src/lambda.ts'],
+    entry: { // MODIFIED
+      lambda: './src/lambda.ts',
+      'streaming.handler': './src/streaming.handler.ts'
+    },
     externals: ['@libsql', 'libsql', '@libsql/client', '@libsql/hrana-client'],
     output: {
       ...options.output,
-      filename: 'lambda.js',
+      filename: '[name].js', // MODIFIED
       libraryTarget: 'commonjs2',
     },
     module: {

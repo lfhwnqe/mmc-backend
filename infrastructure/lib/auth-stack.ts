@@ -324,6 +324,51 @@ export class AuthStack extends cdk.Stack {
       value: streamTestUrl.url,
       description: '测试流式响应的函数 URL'
     });
+
+    // Create Lambda for RAG Streaming Chat
+    const streamingRagChatHandler = new lambda.Function(this, 'StreamingRagChatHandler', {
+      runtime: lambda.Runtime.NODEJS_22_X, // Match your existing AuthHandler or choose appropriately
+      architecture: lambda.Architecture.ARM_64, // Match your existing AuthHandler
+      handler: 'streaming.handler.streamRagChatHandler', // Points to dist/streaming.handler.js and its export
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../dist')), // Assumes streaming.handler.js will be in dist
+      role: lambdaRole, // Reuse the existing lambdaRole, ensure it has necessary permissions
+      environment: { // Pass all necessary environment variables
+        NODE_ENV: props.stage,
+        USER_POOL_ID: this.userPool.userPoolId, // Example, if needed by some shared module
+        USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId, // Example
+        AUDIO_BUCKET_NAME: audioBucket.bucketName, // Example
+        IMAGE_BUCKET_NAME: imageBucket.bucketName, // Example
+        OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL || '',
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
+        CLOUDFRONT_DOMAIN: distribution.distributionDomainName, // Example
+        UPSTASH_VECTOR_URL: process.env.UPSTASH_VECTOR_URL || '',
+        UPSTASH_VECTOR_TOKEN: process.env.UPSTASH_VECTOR_TOKEN || '',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        // Add any other environment variables required by RagService or Mastra
+      },
+      timeout: cdk.Duration.minutes(2), // Adjust as needed for potentially long streams
+      memorySize: 512, // Adjust as needed
+      logRetention: cdk.aws_logs.RetentionDays.ONE_WEEK,
+      // layers: [ /* Add layers if your new handler needs them, e.g., LibsqlLayer if used directly */ ],
+    });
+
+    // Add Function URL for the RAG Streaming Chat Lambda
+    const streamingRagChatFunctionUrl = streamingRagChatHandler.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE, // For easier testing, consider IAM for production
+      invokeMode: lambda.InvokeMode.RESPONSE_STREAM, // CRITICAL for streaming
+      cors: { // Basic CORS configuration, adjust as needed
+        allowedOrigins: ['*'], // Be more specific in production
+        allowedMethods: [lambda.HttpMethod.POST, lambda.HttpMethod.OPTIONS], // Allow POST and OPTIONS for preflight
+        allowedHeaders: ['content-type', 'authorization', /* any other headers your client might send */],
+        allowCredentials: true, // If you need to send cookies or auth headers
+      }
+    });
+
+    // Output the new RAG Streaming Chat Function URL
+    new cdk.CfnOutput(this, 'StreamingRagChatFunctionUrl', {
+      value: streamingRagChatFunctionUrl.url,
+      description: 'RAG Streaming Chat Function URL'
+    });
         
     // 创建 API Gateway 日志角色
     new iam.Role(this, 'ApiGatewayLoggingRole', {
